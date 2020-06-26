@@ -1,5 +1,5 @@
 @import 'https://at.alicdn.com/t/font_1901665_3t56f64oawh.css';
-bode{
+body{
   font-family: "Helvetica", "Arial", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
 }
 
@@ -22,4 +22,40 @@ bode{
   color: #fff;
   text-align: center;
   border-radius: 4px;
+}
+.section{
+  padding: 35px 0;
+}
+
+.section:nth-child(2n){
+  background: #f7f7f7;
+}
+.section-topic-title{
+  margin: 12px 0;  
+}
+.section-topic-title .title{
+  display: inline;
+  color: #072;
+  font-size: 15px;
+}
+.section-topic-title span::before{
+  content: "( ";
+}
+.section-topic-title span::after{
+  content: " )";
+}
+.section-topic-title span{
+  font-size: 12px; 
+ }
+a.link{
+  color: #37a;
+  text-decoration: none;
+}
+a.link:hover{
+  color: #fff;
+  background: #37a;
+}
+a.link:active{
+  color: #fff;
+  background: #f93;
 }

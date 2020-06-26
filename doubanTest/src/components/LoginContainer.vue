@@ -9,7 +9,7 @@
             <span>6.0</span>
           </div>
           <div class="dld-area">
-            <button class="btn">下载豆瓣app</button>
+            <button class="btn">下载豆瓣 App</button>
             <div class="qrcode" @mouseenter="showbigqrcode=true" @mouseleave="showbigqrcode=false">
               <img src="../assets/img/icon_qrcode_green.png" alt />
               <div class="bigqrcode" :class="{displayNone : !showbigqrcode}">
@@ -39,7 +39,7 @@ export default {
 
 <style scoped lang="scss">
 .loginContainer {
-  height: 300px;
+  height: 304px;
   min-width: 980px;
   margin: 0 auto;
   background: url("../assets/img/loginContainer.png") no-repeat;

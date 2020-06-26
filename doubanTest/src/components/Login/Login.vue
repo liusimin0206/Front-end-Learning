@@ -105,7 +105,7 @@
     <!-- 短信登录/注册，密码登录 -->
     <div class="login" :class="{displayNone : LoginMethodisQrCode}">
       <div class="switchMenu clearfix">
-        <span :class="{selected : isActive==0}" @click="isActive=0">短信登录/注册</span>
+        <span :class="{selected : isActive==0}" @click="isActive=0">短信登录 / 注册</span>
         <span :class="{selected : isActive==1}" @click="isActive=1">密码登录</span>
       </div>
       <form class="form" :class="{displayNone : isActive!=0}">
