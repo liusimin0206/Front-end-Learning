@@ -37,8 +37,10 @@ export default {
       margin: 10px 0 0 10px;
       .pic{
         img{
+          display: block;
           width: 170px;
           height: 170px;
+          margin-bottom: 5px;
         }
       }
       .link{
