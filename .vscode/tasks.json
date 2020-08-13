@@ -8,6 +8,14 @@
             "script": "install",
             "path": "vuecli3test/",
             "problemMatcher": []
+        },
+        {
+            "type": "npm",
+            "script": "serve",
+            "path": "ZhihuWeb/",
+            "problemMatcher": [],
+            "label": "npm: serve - ZhihuWeb",
+            "detail": "vue-cli-service serve"
         }
     ]
 }
