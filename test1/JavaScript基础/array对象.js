@@ -1,4 +1,4 @@
-var arr = ["a", "b", "c"];
+// var arr = ["a", "b", "c"];
 var newArr = [1, 2].map(e => {
   console.log(this == global);
   return this[e];

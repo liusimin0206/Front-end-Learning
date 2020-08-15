@@ -1,13 +1,13 @@
 Person.prototype = {
   name: "laozhang",
-  that: this,
+  that: this, //全局作用域
   sayName: function() {
     console.log(this.that);
   }
 };
 function Person() {
   this.name = "laoliu";
-  this.that1 = this;
+  this.that1 = this; //构造出的对象
   this.sayName1 = function() {
     console.log(this.that1);
   };

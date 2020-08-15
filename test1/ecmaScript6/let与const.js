@@ -23,8 +23,14 @@
 // }
 
 // console.log(typeof MAX);
-function f() {
-  console.log("aaa");
+// function f() {
+//   console.log("aaa");
+// }
+// let [x = f()] = [];
+// console.log(x);
+let test = 111;
+{
+  let test = 222;
+  console.log(test);
 }
-let [x = f()] = [];
-console.log(x);
+console.log(test);
