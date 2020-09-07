@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+
+</body>
+<script>
+    function* myGenerator() {
+        console.log("开始执行");
+        let a = 0;
+        let res = yield "hello";
+        console.log(res);
+        console.log("暂停后，再次执行");
+        yield 'generator';
+        console.log('遍历完毕。。');
+        console.log("a", a);
+        return "返回的结果";
+    }
+    var MG = myGenerator()
+    console.log(MG);
+    console.log(MG.next("11111"));
+    console.log(MG.next("22222"));
+    console.log(MG.next("33333"));
+    console.log(MG.next());
+
+</script>
+
+</html>

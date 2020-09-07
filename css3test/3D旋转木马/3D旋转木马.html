@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            perspective: 1000px;
+        }
+
+        .box {
+            margin: 150px auto;
+            position: relative;
+            width: 300px;
+            transform-style: preserve-3d;
+            height: 272px;
+            animation-name: rotate;
+            animation-duration: 12s;
+            animation-iteration-count: infinite;
+            animation-timing-function: linear;
+        }
+
+        .pic {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .pic:nth-child(1) {
+            /* transform-origin: 0 0 -300px; */
+            transform: translate3d(0, 0, 300px);
+        }
+
+        .pic:nth-child(2) {
+            transform: rotatey(60deg) translate3d(0, 0, 300px);
+            /* transform-origin: 0 0 0;
+            transform: rotatey(60deg); */
+
+        }
+
+        .pic:nth-child(3) {
+            transform: rotatey(120deg) translate3d(0, 0, 300px);
+        }
+
+        .pic:nth-child(6) {
+
+            transform: rotatey(180deg) translate3d(0, 0, 300px);
+        }
+
+        .pic:nth-child(4) {
+
+            transform: rotatey(240deg) translate3d(0, 0, 300px);
+        }
+
+        .pic:nth-child(5) {
+
+            transform: rotatey(300deg) translate3d(0, 0, 300px);
+        }
+
+        img {
+            display: block;
+            width: 300px;
+        }
+
+        @keyframes rotate {
+            100% {
+                transform: rotatey(360deg)
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <div class="box">
+            <div class="pic"> <img src="./img/threeKingdoms.jpg" alt=""></div>
+            <div class="pic"> <img src="./img/threeKingdoms.jpg" alt=""></div>
+            <div class="pic"> <img src="./img/threeKingdoms.jpg" alt=""></div>
+            <div class="pic"> <img src="./img/threeKingdoms.jpg" alt=""></div>
+            <div class="pic"> <img src="./img/threeKingdoms.jpg" alt=""></div>
+            <div class="pic"> <img src="./img/threeKingdoms.jpg" alt=""></div>
+        </div>
+    </div>
+
+</body>
+
+</html>

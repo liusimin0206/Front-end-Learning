@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {}
+
+        .box {
+            margin: 50px auto;
+            position: relative;
+            width: 400px;
+
+            height: 400px;
+            animation-name: rotate;
+            animation-duration: 12s;
+            animation-iteration-count: infinite;
+            animation-timing-function: linear;
+        }
+
+        .line {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            height: 6px;
+            width: 60px;
+            background-color: black;
+            border-radius: 3px;
+        }
+
+        .line:nth-child(1) {
+            /* transform-origin: 0 0 -300px; */
+            transform: translate(0, -60px);
+        }
+
+        .line:nth-child(2) {
+            transform-origin: 50% 60px;
+            transform: translate(0, -60px) rotate(60deg);
+        }
+
+        .line:nth-child(3) {
+            /* transform-origin: 0 0 -300px; */
+            transform: rotate(120deg) translate(0, -60px);
+        }
+
+        .line:nth-child(4) {
+            /* transform-origin: 0 0 -300px; */
+            transform: rotate(180deg) translate(0, -60px);
+        }
+
+        .line:nth-child(5) {
+            /* transform-origin: 0 0 -300px; */
+            transform: rotate(240deg) translate(0, -60px);
+        }
+
+        .line:nth-child(6) {
+            /* transform-origin: 0 0 -300px; */
+            transform: rotate(300deg) translate(0, -60px);
+        }
+
+        @keyframes rotate {}
+    </style>
+</head>
+
+<body>
+    <div class="box">
+        <div class="line"> </div>
+        <div class="line"> </div>
+        <div class="line"> </div>
+        <div class="line"> </div>
+        <div class="line"> </div>
+        <div class="line"> </div>
+    </div>
+</body>
+
+</html>
