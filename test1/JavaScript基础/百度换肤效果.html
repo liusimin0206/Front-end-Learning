@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        ul {
+            display: block;
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        li {
+            display: block;
+        }
+
+        .red {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <ul class="nav">
+        <li>1111</li>
+        <li>1112</li>
+        <li>1113</li>
+        <li>1114</li>
+        <li>1115</li>
+    </ul>
+    <button accesskey="h" id="btn">点击</button>
+    <div contenteditable>123</div>
+    <script>
+        var nav = document.querySelector('.nav');
+        nav.addEventListener("click", function (event) {
+            event.target.className = "red"
+        })
+    </script>
+</body>
+
+</html>
