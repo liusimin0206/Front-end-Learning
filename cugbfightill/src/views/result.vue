@@ -65,7 +65,7 @@
           <div class="vresults">
             <div class="item">
               <div class="tit">辅导员 [吕菲菲-2020020010]</div>
-              <div class="text">通过 2020-09-18 10:20:24</div>
+              <div class="text">通过 {{ dateString }} 8:03:24</div>
               <div class="text">审核意见：</div>
             </div>
             <div class="item">
@@ -93,9 +93,11 @@
 </template>
 
 <script>
+import { dateString } from "../assets/data/getDate";
 export default {
   data: function() {
     return {
+      dateString,
       title: "刘思民-临时进出校申请表",
       basicInfor: [
         "学号：2004190034",
@@ -116,10 +118,10 @@ export default {
         ],
         [
           "出校原因：实习任务",
-          "出校日期：2020-09-18",
+          `出校日期：${dateString}`,
           "预计出校时刻：8点",
           "目的地：北京市海淀区 中关村大厦1508室北京AI研发中心 15层",
-          "进校日期：2020-09-18",
+          `进校日期：${dateString}`,
           "预计进校时刻：21点",
           "导师/辅导员同意出校证明："
         ],

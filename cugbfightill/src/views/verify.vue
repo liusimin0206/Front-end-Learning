@@ -20,10 +20,17 @@
 
 <script>
 import verifyitem from "@/components/verifyitem.vue";
+import { dateString } from "../assets/data/getDate";
 export default {
   data: function() {
     return {
       list: [
+        {
+          name: "刘思民-2004190034",
+          department: "部门/学院: 信息工程学院",
+          result: "审核完成",
+          date: dateString
+        },
         {
           name: "刘思民-2004190034",
           department: "部门/学院: 信息工程学院",
@@ -50,7 +57,6 @@ export default {
   },
   methods: {
     handleClick() {
-      console.log("111");
       this.$router.push("/result");
     }
   }

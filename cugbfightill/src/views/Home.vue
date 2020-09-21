@@ -1,7 +1,7 @@
 <template>
   <div class="home">
     <div class="date">
-      <div class="content">日期：2020-09-18</div>
+      <div class="content">日期：{{ dateString }}</div>
     </div>
 
     <applicationEntry
@@ -46,11 +46,12 @@
 <script>
 // @ is an alias to /src
 import applicationEntry from "@/components/applicationEntry.vue";
-
+import { dateString } from "../assets/data/getDate";
 export default {
   name: "Home",
   data: function() {
     return {
+      dateString: dateString,
       list: [
         // {
         //   title: "2020年秋季学期新生报到申请表",
