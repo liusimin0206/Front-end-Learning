@@ -1,0 +1,97 @@
+.result .header {
+  padding: 10px;
+  display: flex;
+}
+.result .header .pic {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-image: url("../assets/img/0325_156.jpg");
+  background-size: 100% auto;
+  margin-right: 10px;
+}
+.result .header .title {
+  color: black;
+  line-height: 50px;
+  font-weight: bolder;
+  font-family: "Microsoft YaHei";
+  font-size: 18px;
+}
+.result .container {
+  background-color: #fff;
+  padding: 10px;
+}
+.result .container /deep/ .ant-collapse-borderless {
+  background-color: transparent;
+}
+.result .container /deep/ .ant-collapse-item {
+  border-bottom: 0;
+}
+.result .container /deep/ .ant-collapse-header,
+.result .container /deep/ .ant-collapse-content-box {
+  border-bottom: 0.1px solid rgba(233, 233, 233, 0.5);
+  padding-left: 0;
+}
+.result .container .subtitle {
+  font-weight: 600;
+}
+.result .container .subtitle .content {
+  font-weight: normal;
+  color: #808080;
+}
+.result .container .subtitle .vresults {
+  margin-left: 60px;
+}
+.result .container .subtitle .vresults .item {
+  padding: 9px 0;
+  border-bottom: 0.1px solid rgba(233, 233, 233, 0.5);
+}
+.result .container .subtitle .vresults .item .tit {
+  color: #07c269;
+  font-weight: bold;
+}
+.result .container .subtitle .vresults .item .text {
+  color: #25c877;
+  font-weight: normal;
+}
+.result .container .subtitle .vresults .item :last-child {
+  border-bottom: 0;
+}
+.result .container .vinfo {
+  position: relative;
+}
+.result .container .vinfo .passIcons {
+  position: absolute;
+  left: 25px;
+  top: 61px;
+}
+.result .container .vinfo .passIcons .passiconitem {
+  color: #1cc395;
+  font-size: 24px;
+}
+.result .container .vinfo .passIcons .heightLine {
+  margin-left: 12px;
+  height: 58px;
+  width: 2px;
+  background-color: #e9e9e9;
+}
+.result .container /deep/ .el-image-viewer__close {
+  opacity: 0.3;
+}
+.result .container /deep/ .el-image-viewer__actions {
+  display: none;
+}
+.result .vover {
+  position: fixed;
+  bottom: 0;
+  padding: 14px;
+  text-align: center;
+  font-size: 15px;
+  color: #808080;
+  width: 100%;
+  background-color: #fff;
+  box-shadow: 0 -1px 3px #ccc;
+}
+.result .bottom {
+  height: 30px;
+}
