@@ -16,7 +16,11 @@
           </ul>
         </a-collapse-panel>
         <a-collapse-panel key="2" header="申请信息" class="subtitle">
-          <ul class="content" v-for="(item, i) in applicationInfor[0]" :key="i">
+          <ul
+            class="content"
+            v-for="(item, i) in applicationInfor[0]"
+            :key="'1-' + i"
+          >
             <li>{{ item }}</li>
           </ul>
           <!-- 插入导师证明图片 -->
@@ -27,7 +31,11 @@
             fit="cover"
           >
           </el-image>
-          <ul class="content" v-for="(item, i) in applicationInfor[1]" :key="i">
+          <ul
+            class="content"
+            v-for="(item, i) in applicationInfor[1]"
+            :key="'2-' + i"
+          >
             <li>{{ item }}</li>
           </ul>
           <!-- 插入导师证明图片 -->
@@ -38,7 +46,11 @@
             fit="cover"
           >
           </el-image>
-          <ul class="content" v-for="(item, i) in applicationInfor[2]" :key="i">
+          <ul
+            class="content"
+            v-for="(item, i) in applicationInfor[2]"
+            :key="'3-' + i"
+          >
             <li>{{ item }}</li>
           </ul>
           <!-- 插入健康码图片 -->
@@ -65,7 +77,7 @@
           <div class="vresults">
             <div class="item">
               <div class="tit">辅导员 [吕菲菲-2020020010]</div>
-              <div class="text">通过 {{ dateString }} 8:03:24</div>
+              <div class="text">通过 {{ dateString }} {{ time }}</div>
               <div class="text">审核意见：</div>
             </div>
             <div class="item">
@@ -93,11 +105,12 @@
 </template>
 
 <script>
-import { dateString } from "../assets/data/getDate";
+import { dateString, time } from "../assets/data/getDate";
 export default {
   data: function() {
     return {
       dateString,
+      time,
       title: "刘思民-临时进出校申请表",
       basicInfor: [
         "学号：2004190034",

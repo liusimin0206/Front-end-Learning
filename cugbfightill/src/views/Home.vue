@@ -14,10 +14,10 @@
       </template>
       <template v-slot:detail>
         <div
-          v-for="(idetail, i) in item.detail"
-          :key="i"
+          v-for="(idetail, j) in item.detail"
+          :key="j"
           class="item"
-          @click="handleClick(i)"
+          @click="handleClick(i, j)"
         >
           {{ idetail }}
         </div>
@@ -93,13 +93,10 @@ export default {
     applicationEntry
   },
   methods: {
-    handleClick(i) {
-      if (i == 0) {
-        this.showLoading = true;
-      }
-      if (i == 1) {
+    handleClick(i, j) {
+      if (i == 0 && j == 1) {
         this.$router.push("/verify");
-      }
+      } else this.showLoading = true;
     }
   }
 };

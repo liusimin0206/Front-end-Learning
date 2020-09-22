@@ -1,14 +1,22 @@
 let date = new Date();
 date.dateString = {
   year: date.getFullYear(),
-  Month: date.getMonth() + 1,
-  date: date.getDate()
+  month: date.getMonth() + 1,
+  date: date.getDate(),
+  hours: date.getHours()
 };
 
 let dateString =
   date.dateString.year +
   "-" +
-  date.dateString.Month +
+  date.dateString.month +
   "-" +
   date.dateString.date;
-export { dateString };
+let time;
+if (date.dateString.hours <= 10) {
+  time = `${date.dateString.hours - 1}:57:24`;
+} else {
+  time = `${date.dateString.hours - 4}:57:24`;
+}
+
+export { dateString, time };
