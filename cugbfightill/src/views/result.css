@@ -76,7 +76,7 @@
   background-color: #e9e9e9;
 }
 .result .container /deep/ .el-image-viewer__close {
-  opacity: 0.3;
+  opacity: 0.1;
 }
 .result .container /deep/ .el-image-viewer__actions {
   display: none;

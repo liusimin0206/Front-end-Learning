@@ -27,10 +27,15 @@
           <el-image
             style="width: 100px; height: 100px"
             :src="url1"
-            :preview-src-list="srcList1"
+            @click="showViewer1 = true"
             fit="cover"
           >
           </el-image>
+          <el-image-viewer
+            v-if="showViewer1"
+            :on-close="closeViewer"
+            :url-list="srcList1"
+          />
           <ul
             class="content"
             v-for="(item, i) in applicationInfor[1]"
@@ -42,10 +47,15 @@
           <el-image
             style="width: 100px; height: 100px"
             :src="url1"
-            :preview-src-list="srcList1"
+            @click="showViewer1 = true"
             fit="cover"
           >
           </el-image>
+          <el-image-viewer
+            v-if="showViewer1"
+            :on-close="closeViewer"
+            :url-list="srcList1"
+          />
           <ul
             class="content"
             v-for="(item, i) in applicationInfor[2]"
@@ -57,10 +67,15 @@
           <el-image
             style="width: 100px; height: 200px"
             :src="url2"
-            :preview-src-list="srcList2"
+            @click="showViewer2 = true"
             fit="cover"
           >
           </el-image>
+          <el-image-viewer
+            v-if="showViewer2"
+            :on-close="closeViewer"
+            :url-list="srcList2"
+          />
           <ul class="content" v-for="(item, i) in applicationInfor[3]" :key="i">
             <li>{{ item }}</li>
           </ul>
@@ -106,6 +121,7 @@
 
 <script>
 import { dateString, time } from "../assets/data/getDate";
+import ElImageViewer from "../components/image-viewer";
 export default {
   data: function() {
     return {
@@ -150,8 +166,19 @@ export default {
       url1: require("../assets/img/临时进出校审批表1.png"),
       srcList1: [require("../assets/img/临时进出校审批表1.png")],
       url2: require("../assets/img/健康码.jpg"),
-      srcList2: [require("../assets/img/健康码.jpg")]
+      srcList2: [require("../assets/img/健康码.jpg")],
+      showViewer1: false,
+      showViewer2: false
     };
+  },
+  components: {
+    ElImageViewer
+  },
+  methods: {
+    closeViewer() {
+      this.showViewer1 = false;
+      this.showViewer2 = false;
+    }
   }
 };
 </script>
