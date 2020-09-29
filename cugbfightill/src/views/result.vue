@@ -24,7 +24,7 @@
             <li>{{ item }}</li>
           </ul>
           <!-- 插入导师证明图片 -->
-          <el-image
+          <!-- <el-image
             style="width: 100px; height: 100px"
             :src="url1"
             @click="showViewer1 = true"
@@ -35,7 +35,7 @@
             v-if="showViewer1"
             :on-close="closeViewer"
             :url-list="srcList1"
-          />
+          /> -->
           <ul
             class="content"
             v-for="(item, i) in applicationInfor[1]"
@@ -44,7 +44,7 @@
             <li>{{ item }}</li>
           </ul>
           <!-- 插入导师证明图片 -->
-          <el-image
+          <!-- <el-image
             style="width: 100px; height: 100px"
             :src="url1"
             @click="showViewer1 = true"
@@ -55,7 +55,7 @@
             v-if="showViewer1"
             :on-close="closeViewer"
             :url-list="srcList1"
-          />
+          /> -->
           <ul
             class="content"
             v-for="(item, i) in applicationInfor[2]"
