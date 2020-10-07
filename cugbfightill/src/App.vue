@@ -8,4 +8,8 @@
   </div>
 </template>
 
-<style></style>
+<style>
+#app {
+  overflow: hidden;
+}
+</style>
