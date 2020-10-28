@@ -74,7 +74,7 @@
           <el-image-viewer
             v-if="showViewer2"
             :on-close="closeViewer"
-            :url-list="srcList2"
+            :url-list="[url2]"
           />
           <ul class="content" v-for="(item, i) in applicationInfor[3]" :key="i">
             <li>{{ item }}</li>
@@ -91,8 +91,8 @@
 
           <div class="vresults">
             <div class="item">
-              <div class="tit">辅导员 [吕菲菲-2020020010]</div>
-              <div class="text">通过 {{ dateString }} {{ time }}</div>
+              <div class="tit">辅导员</div>
+              <div class="text">通过</div>
               <div class="text">审核意见：</div>
             </div>
             <div class="item">
@@ -101,8 +101,8 @@
               <div class="text">审核意见：</div>
             </div>
             <div class="item">
-              <div class="tit">学工处</div>
-              <div class="text">通过</div>
+              <div class="tit">学工处 [学生处-10001]</div>
+              <div class="text">通过 {{ dateString }} {{ time }}</div>
               <div class="text">审核意见：</div>
             </div>
           </div>
@@ -121,20 +121,21 @@
 
 <script>
 import { dateString, time } from "../assets/data/getDate";
+import { userInfo } from "../assets/data/getInfo";
 import ElImageViewer from "../components/image-viewer";
 export default {
   data: function() {
     return {
       dateString,
       time,
-      title: "刘思民-临时进出校申请表",
+      title: `${userInfo.name}-临时进出校申请表`,
       basicInfor: [
-        "学号：2004190034",
-        "姓名：刘思民",
+        `学号：${userInfo.id}`,
+        `姓名：${userInfo.name}`,
         "性别：男",
         "学院：信息工程学院",
         "年级：2019",
-        "导师：邢廷炎"
+        "导师：王建业"
       ],
       applicationInfor: [
         [
@@ -166,11 +167,12 @@ export default {
       url1: require("../assets/img/临时进出校审批表1.png"),
       srcList1: [require("../assets/img/临时进出校审批表1.png")],
       url2: require("../assets/img/健康码.jpg"),
-      srcList2: [require("../assets/img/健康码.jpg")],
+
       showViewer1: false,
       showViewer2: false
     };
   },
+
   components: {
     ElImageViewer
   },
@@ -179,6 +181,10 @@ export default {
       this.showViewer1 = false;
       this.showViewer2 = false;
     }
+  },
+  created() {
+    this.url2 =
+      localStorage.getItem("jianKangMa") || require("../assets/img/健康码.jpg");
   }
 };
 </script>

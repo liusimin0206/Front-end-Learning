@@ -4,11 +4,7 @@
       <div class="content">日期：{{ dateString }}</div>
     </div>
 
-    <applicationEntry
-      v-for="(item, i) in list"
-      :key="i"
-      class="applicationEntry"
-    >
+    <applicationEntry v-for="(item, i) in list" :key="i">
       <template v-slot:title>
         <div class="title">{{ item.title }}</div>
       </template>
@@ -25,7 +21,7 @@
     </applicationEntry>
 
     <div class="end">
-      没有更多了
+      <span @click="updateUserInfo">没有更多了</span>
     </div>
     <div class="mask" v-show="showLoading" @click="showLoading = false">
       <div class="box">
@@ -58,7 +54,7 @@ export default {
         //   detail: ["申请记录和审批状态"]
         // },
         {
-          title: "临时进出校申请表",
+          title: "当日进出校申请表",
           detail: ["申请", "申请记录和审批状态"]
         },
         {
@@ -69,10 +65,10 @@ export default {
           title: "在校生离校申请表",
           detail: ["申请", "申请记录和审批状态"]
         },
-        {
-          title: "在校生“晨午晚”健康打卡",
-          detail: ["打卡", "申请记录和审批状态"]
-        },
+        // {
+        //   title: "在校生“晨午晚”健康打卡",
+        //   detail: ["打卡", "申请记录和审批状态"]
+        // },
         {
           title: "每日健康打卡",
           detail: ["打卡", "申请记录和审批状态"]
@@ -86,7 +82,8 @@ export default {
           detail: ["申请", "申请记录和审批状态"]
         }
       ],
-      showLoading: false
+      showLoading: false,
+      updateUserInfoclicktimes: 0
     };
   },
   components: {
@@ -97,6 +94,12 @@ export default {
       if (i == 0 && j == 1) {
         this.$router.push("/verify");
       } else this.showLoading = true;
+    },
+    updateUserInfo() {
+      this.updateUserInfoclicktimes++;
+      if (this.updateUserInfoclicktimes >= 3) {
+        this.$router.push("/update");
+      }
     }
   }
 };
@@ -114,9 +117,6 @@ export default {
   font-size: 15px;
 }
 
-.applicationEntry {
-  margin-bottom: 8px;
-}
 .end {
   text-align: center;
   font-size: 10px;
@@ -140,6 +140,7 @@ export default {
   background-color: #444;
   padding: 28px;
   font-size: 12px;
+  border-radius: 10px;
 }
 .mask .box /deep/.ant-spin-spinning {
   display: block;

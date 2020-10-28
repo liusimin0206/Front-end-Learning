@@ -1,4 +1,4 @@
-export const userInfo = {
-  name: "刘思民",
-  id: "2004190034"
+export let userInfo = {
+  name: localStorage.getItem("_name") || "userName",
+  id: localStorage.getItem("_id") || "userId"
 };

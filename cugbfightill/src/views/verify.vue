@@ -21,42 +21,74 @@
 <script>
 import verifyitem from "@/components/verifyitem.vue";
 import { dateString } from "../assets/data/getDate";
+import { userInfo } from "../assets/data/getInfo";
+
 export default {
   data: function() {
     return {
       list: [
         {
-          name: "刘思民-2004190034",
+          name: `${userInfo.name}-${userInfo.id}`,
           department: "部门/学院: 信息工程学院",
           result: "审核完成",
           date: dateString
         },
         {
-          name: "刘思民-2004190034",
+          name: `${userInfo.name}-${userInfo.id}`,
+          department: "部门/学院: 信息工程学院",
+          result: "审核完成",
+          date: "2020-10-24"
+        },
+        {
+          name: `${userInfo.name}-${userInfo.id}`,
+          department: "部门/学院: 信息工程学院",
+          result: "审核完成",
+          date: "2020-10-19"
+        },
+        {
+          name: `${userInfo.name}-${userInfo.id}`,
+          department: "部门/学院: 信息工程学院",
+          result: "审核完成",
+          date: "2020-10-18"
+        },
+        {
+          name: `${userInfo.name}-${userInfo.id}`,
+          department: "部门/学院: 信息工程学院",
+          result: "审核完成",
+          date: "2020-10-10"
+        },
+        {
+          name: `${userInfo.name}-${userInfo.id}`,
+          department: "部门/学院: 信息工程学院",
+          result: "审核完成",
+          date: "2020-10-6"
+        },
+        {
+          name: `${userInfo.name}-${userInfo.id}`,
           department: "部门/学院: 信息工程学院",
           result: "审核完成",
           date: "2020-10-4"
         },
         {
-          name: "刘思民-2004190034",
+          name: `${userInfo.name}-${userInfo.id}`,
           department: "部门/学院: 信息工程学院",
           result: "审核完成",
           date: "2020-09-19"
         },
         {
-          name: "刘思民-2004190034",
+          name: `${userInfo.name}-${userInfo.id}`,
           department: "部门/学院: 信息工程学院",
           result: "审核完成",
           date: "2020-09-18"
         },
         {
-          name: "刘思民-2004190034",
+          name: `${userInfo.name}-${userInfo.id}`,
           department: "部门/学院: 信息工程学院",
           result: "审核完成",
           date: "2020-09-16"
         },
         {
-          name: "刘思民-2004190034",
+          name: `${userInfo.name}-${userInfo.id}`,
           department: "部门/学院: 信息工程学院",
           result: "审核完成",
           date: "2020-09-15"
@@ -67,6 +99,7 @@ export default {
   components: {
     verifyitem
   },
+  created() {},
   methods: {
     handleClick() {
       this.$router.push("/result");

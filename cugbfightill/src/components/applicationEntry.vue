@@ -17,6 +17,7 @@ export default {};
 .applicationEntry {
   background-color: #fff;
   font-family: "Microsoft YaHei";
+  margin-bottom: 8px;
 }
 .applicationEntry .content {
   margin: 0 14px;
