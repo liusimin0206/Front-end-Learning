@@ -77,9 +77,8 @@ export default {
     storeUserMessage() {
       this.storePicture(this.userPic);
       this.storeUserInfo(this.userName, this.userId);
-
-      // this.$router.push("/");
-      location.replace("./");
+      this.$router.push("/");
+      this.$emit("refresh")
     }
   }
 };
