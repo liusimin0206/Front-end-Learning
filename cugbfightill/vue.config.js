@@ -2,6 +2,6 @@
 const ENV = process.env.NODE_ENV;
 
 module.exports = {
-  publicPath: ENV === "development" ? "" : "./dist/",
-  indexPath: "../index.html"
+  publicPath: ENV === "development" ? "" : "./",
+  // indexPath: "../index.html"
 };
