@@ -79,7 +79,7 @@ export default {
       this.storeUserInfo(this.userName, this.userId);
 
       // this.$router.push("/");
-      location.replace("/");
+      location.replace("./");
     }
   }
 };
