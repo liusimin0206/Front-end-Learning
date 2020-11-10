@@ -1,15 +1,15 @@
 /*
  * @Author: your name
- * @Date: 2020-11-09 10:07:06
- * @LastEditTime: 2020-11-10 10:22:08
+ * @Date: 2020-11-10 10:25:43
+ * @LastEditTime: 2020-11-10 10:31:37
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
- * @FilePath: \test1\231.2-的幂.js
+ * @FilePath: \test1\326.3-的幂.js
  */
 /*
- * @lc app=leetcode.cn id=231 lang=javascript
+ * @lc app=leetcode.cn id=326 lang=javascript
  *
- * [231] 2的幂
+ * [326] 3的幂
  */
 
 // @lc code=start
@@ -17,14 +17,14 @@
  * @param {number} n
  * @return {boolean}
  */
-var isPowerOfTwo = function(n) {
+var isPowerOfThree = function(n) {
   if (n <= 0) {
     return false;
   }
   let flag = true;
   while (n > 1) {
-    let temp = n >> 1;
-    if (temp << 1 !== n) {
+    let temp = Math.floor(n / 3);
+    if (temp * 3 !== n) {
       flag = false;
       break;
     } else {
@@ -34,4 +34,4 @@ var isPowerOfTwo = function(n) {
   return flag;
 };
 // @lc code=end
-console.log(isPowerOfTwo(0));
+console.log(isPowerOfThree(45));
