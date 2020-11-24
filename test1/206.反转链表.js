@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-11-19 15:20:22
- * @LastEditTime: 2020-11-19 16:01:19
+ * @LastEditTime: 2020-11-23 14:38:56
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \test1\206.反转链表.js
@@ -28,14 +28,11 @@ var reverseList = function(head) {
   if (head == null || head.next == null) {
     return head;
   }
-  let prev = null;
-  let node = head;
-  while (node != null) {
-    let temp = node.next;
-    node.next = prev;
-    prev = node;
-    node = temp;
+  let p = reverseList(head.next);
+  if (head.next.next == null) {
+    head.next.next = head;
+    head.next = null;
   }
-  return prev;
+  return p;
 };
 // @lc code=end
