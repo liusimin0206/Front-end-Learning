@@ -120,48 +120,25 @@
 </template>
 
 <script>
-import { dateString, time } from "../assets/data/getDate";
 import { userInfo } from "../assets/data/getInfo";
 import ElImageViewer from "../components/image-viewer";
 export default {
   data: function() {
     return {
-      dateString,
-      time,
-      title: `${userInfo.name}-临时进出校申请表`,
+      dateString: "",
+      time: "",
+      date: undefined,
+      title: `${userInfo.name}-当日进出校申请表`,
       basicInfor: [
         `学号：${userInfo.id}`,
         `姓名：${userInfo.name}`,
         "性别：男",
         "学院：信息工程学院",
         "年级：2019",
-        "导师：王建业"
+        "导师：王建业",
+        "联系电话：18310621826"
       ],
-      applicationInfor: [
-        [
-          "联系电话：18310511830",
-          "临时进出校类别：临时出校",
-          "进校原因：",
-          "出发地：",
-          "预计进校时刻：",
-          "导师/辅导员同意入校证明："
-        ],
-        [
-          "出校原因：实习任务",
-          `出校日期：${dateString}`,
-          "预计出校时刻：8点",
-          "目的地：北京市海淀区 中关村大厦1508室北京AI研发中心 15层",
-          `进校日期：${dateString}`,
-          "预计进校时刻：21点",
-          "导师/辅导员同意出校证明："
-        ],
-        ["我承诺对上述填写信息的真实性负责：是", "健康码："],
-        [
-          "宿舍楼：学19楼",
-          "宿舍号：0537",
-          "位置信息：北京市海淀区学院路街道成府路中国地质大学(北京)"
-        ]
-      ],
+      applicationInfor: [],
 
       activeKey: ["2", "3"],
       url1: require("../assets/img/临时进出校审批表1.png"),
@@ -180,11 +157,40 @@ export default {
     closeViewer() {
       this.showViewer1 = false;
       this.showViewer2 = false;
+    },
+    date2timeStr(date) {
+      function bu2Wei(str) {
+        str = String(str);
+        while (str.length < 2) {
+          str = "0" + str;
+        }
+        return str;
+      }
+      return [
+        bu2Wei(date.getHours()),
+        bu2Wei(date.getMinutes()),
+        bu2Wei(date.getSeconds())
+      ].join(":");
     }
   },
   created() {
+    this.date = new Date();
+    this.date.setMinutes(this.date.getMinutes() - 51);
+    this.time = this.date2timeStr(this.date);
+    this.dateString = this.$route.query.date;
     this.url2 =
       localStorage.getItem("jianKangMa") || require("../assets/img/健康码.jpg");
+    this.applicationInfor = [
+      ["临时进出校类别：临时出校", "出发地："],
+      [`进出校日期：${this.dateString}`, "目的地：五道口东源大厦"],
+      ["我承诺对上述填写信息的真实性负责：是", "健康码："],
+      [
+        "出校原因：实习任务",
+        "进校原因：",
+
+        "位置信息：北京市海淀区学院路街道成府路中国地质大学(北京)"
+      ]
+    ];
   }
 };
 </script>

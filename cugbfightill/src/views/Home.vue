@@ -21,7 +21,7 @@
     </applicationEntry>
 
     <div class="end">
-      <span @click="updateUserInfo">没有更多了</span>
+      <span>没有更多了</span>
     </div>
     <div class="mask" v-show="showLoading" @click="showLoading = false">
       <div class="box">
@@ -42,12 +42,12 @@
 <script>
 // @ is an alias to /src
 import applicationEntry from "@/components/applicationEntry.vue";
-import { dateString } from "../assets/data/getDate";
+import { date2Str } from "../assets/data/getDate";
 export default {
   name: "Home",
   data: function() {
     return {
-      dateString: dateString,
+      dateString: undefined,
       list: [
         // {
         //   title: "2020年秋季学期新生报到申请表",
@@ -82,25 +82,24 @@ export default {
           detail: ["申请", "申请记录和审批状态"]
         }
       ],
-      showLoading: false,
-      updateUserInfoclicktimes: 0
+      showLoading: false
     };
   },
   components: {
     applicationEntry
   },
+  created() {
+    this.dateString = this.date2Str(new Date());
+  },
   methods: {
     handleClick(i, j) {
-      if (i == 0 && j == 1) {
+      if (i == 0 && j == 0) {
+        this.$router.push("/update");
+      } else if (i == 0 && j == 1) {
         this.$router.push("/verify");
       } else this.showLoading = true;
     },
-    updateUserInfo() {
-      this.updateUserInfoclicktimes++;
-      if (this.updateUserInfoclicktimes >= 3) {
-        this.$router.push("/update");
-      }
-    }
+    date2Str
   }
 };
 </script>

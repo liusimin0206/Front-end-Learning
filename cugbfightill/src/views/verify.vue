@@ -4,7 +4,7 @@
       v-for="(item, i) in list"
       :key="i"
       class="verifyitem"
-      @click.native="handleClick"
+      @click.native="handleClick(item.date)"
     >
       <template v-slot:title>
         <div class="left">{{ item.name }}</div>
@@ -20,90 +20,51 @@
 
 <script>
 import verifyitem from "@/components/verifyitem.vue";
-import { dateString } from "../assets/data/getDate";
+import { date2Str } from "../assets/data/getDate";
 import { userInfo } from "../assets/data/getInfo";
 
 export default {
   data: function() {
     return {
-      list: [
-        {
-          name: `${userInfo.name}-${userInfo.id}`,
-          department: "部门/学院: 信息工程学院",
-          result: "审核完成",
-          date: dateString
-        },
-        {
-          name: `${userInfo.name}-${userInfo.id}`,
-          department: "部门/学院: 信息工程学院",
-          result: "审核完成",
-          date: "2020-10-24"
-        },
-        {
-          name: `${userInfo.name}-${userInfo.id}`,
-          department: "部门/学院: 信息工程学院",
-          result: "审核完成",
-          date: "2020-10-19"
-        },
-        {
-          name: `${userInfo.name}-${userInfo.id}`,
-          department: "部门/学院: 信息工程学院",
-          result: "审核完成",
-          date: "2020-10-18"
-        },
-        {
-          name: `${userInfo.name}-${userInfo.id}`,
-          department: "部门/学院: 信息工程学院",
-          result: "审核完成",
-          date: "2020-10-10"
-        },
-        {
-          name: `${userInfo.name}-${userInfo.id}`,
-          department: "部门/学院: 信息工程学院",
-          result: "审核完成",
-          date: "2020-10-6"
-        },
-        {
-          name: `${userInfo.name}-${userInfo.id}`,
-          department: "部门/学院: 信息工程学院",
-          result: "审核完成",
-          date: "2020-10-4"
-        },
-        {
-          name: `${userInfo.name}-${userInfo.id}`,
-          department: "部门/学院: 信息工程学院",
-          result: "审核完成",
-          date: "2020-09-19"
-        },
-        {
-          name: `${userInfo.name}-${userInfo.id}`,
-          department: "部门/学院: 信息工程学院",
-          result: "审核完成",
-          date: "2020-09-18"
-        },
-        {
-          name: `${userInfo.name}-${userInfo.id}`,
-          department: "部门/学院: 信息工程学院",
-          result: "审核完成",
-          date: "2020-09-16"
-        },
-        {
-          name: `${userInfo.name}-${userInfo.id}`,
-          department: "部门/学院: 信息工程学院",
-          result: "审核完成",
-          date: "2020-09-15"
-        }
-      ]
+      date: undefined,
+      dateList: [],
+      list: []
     };
   },
   components: {
     verifyitem
   },
-  created() {},
+  created() {
+    this.date = new Date();
+    this.dateList = this.getBefore100Date(this.date);
+    this.dateList.forEach(item => {
+      let tempDateStr = this.date2Str(item);
+      let tempObj = {
+        name: `${userInfo.name}-${userInfo.id}`,
+        department: "部门/学院: 信息工程学院",
+        result: "审核完成",
+        date: tempDateStr,
+        detailDate: item
+      };
+      this.list.push(tempObj);
+    });
+  },
   methods: {
-    handleClick() {
-      this.$router.push("/result");
-    }
+    handleClick(date) {
+      this.$router.push({ path: `/result`, query: { date } });
+    },
+    getBefore100Date(date) {
+      let dateList = [];
+      for (let i = 0; i < 100; i++) {
+        if (i === 0 || Math.random() > 0.2) {
+          let tempDate = new Date();
+          tempDate.setDate(date.getDate() - i);
+          dateList.push(tempDate);
+        }
+      }
+      return dateList;
+    },
+    date2Str
   }
 };
 </script>

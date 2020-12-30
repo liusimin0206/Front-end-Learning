@@ -1,36 +1,45 @@
 <template>
   <div class="update">
-    <div class="form">
-      <a-input class="form-item" v-model="userName" placeholder="您的姓名">
-        <a-icon slot="prefix" type="user" />
-      </a-input>
-      <a-input
-        class="form-item"
-        v-model="userId"
-        placeholder="您的学号"
-        prefix="ID"
-      >
-      </a-input>
-      <a-upload
-        class="form-item"
-        name="file"
-        accept="image/*"
-        list-type="picture"
-        @change="handleChange"
-        :beforeUpload="beforeUpload"
-        :fileList="fileList"
-      >
-        <a-button>上传附件</a-button>
-        <span class="uploadtips" @click.stop
-          >支持png、jpg、jpeg格式，最大不超过2M。</span
+    <a-form-model
+      ref="form"
+      :model="form"
+      :rules="rules"
+      :label-col="{ span: 5 }"
+      :wrapper-col="{ span: 12 }"
+    >
+      <a-form-model-item label="姓名" prop="userName">
+        <a-input v-model="form.userName" placeholder="您的姓名">
+          <a-icon slot="prefix" type="user" />
+        </a-input>
+      </a-form-model-item>
+      <a-form-model-item label="学号" prop="userId">
+        <a-input v-model="form.userId" placeholder="您的学号" prefix="ID">
+        </a-input>
+      </a-form-model-item>
+      <a-form-model-item label="健康码" prop="userPic">
+        <a-upload
+          name="file"
+          accept="image/*"
+          list-type="picture"
+          @change="handleChange"
+          :beforeUpload="beforeUpload"
+          :fileList="fileList"
         >
-      </a-upload>
-      <div class="form-item button">
+          <a-button>上传附件</a-button>
+          <span class="uploadtips" @click.stop
+            >支持png、jpg、jpeg格式，最大不超过2M。
+          </span>
+        </a-upload>
+      </a-form-model-item>
+      <a-form-model-item :wrapper-col="{ span: 14, offset: 6 }">
         <a-button type="primary" @click="storeUserMessage">
           确认
         </a-button>
-      </div>
-    </div>
+        <a-button style="margin-left: 10px;" @click="resetForm">
+          重置
+        </a-button>
+      </a-form-model-item>
+    </a-form-model>
   </div>
 </template>
 
@@ -39,9 +48,34 @@ export default {
   data() {
     return {
       fileList: [],
-      userName: "",
-      userId: "",
-      userPic: ""
+      form: {
+        userName: "",
+        userId: "",
+        userPic: ""
+      },
+      rules: {
+        userName: [
+          {
+            required: true,
+            message: "Please input name",
+            trigger: "blur"
+          }
+        ],
+        userId: [
+          {
+            required: true,
+            message: "Please input userId",
+            trigger: "blur"
+          }
+        ],
+        userPic: [
+          {
+            required: true,
+            message: "Please upload picture",
+            trigger: "blur"
+          }
+        ]
+      }
     };
   },
 
@@ -63,7 +97,7 @@ export default {
       let reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
-        this.userPic = reader.result;
+        this.form.userPic = reader.result;
       };
       return false;
     },
@@ -75,10 +109,19 @@ export default {
       localStorage.setItem("_id", id);
     },
     storeUserMessage() {
-      this.storePicture(this.userPic);
-      this.storeUserInfo(this.userName, this.userId);
-      this.$router.push("/");
-      this.$emit("refresh");
+      this.$refs.form.validate(valid => {
+        if (valid) {
+          this.storePicture(this.form.userPic);
+          this.storeUserInfo(this.form.userName, this.form.userId);
+          this.$router.push("/");
+          this.$emit("refresh");
+        } else {
+          return false;
+        }
+      });
+    },
+    resetForm() {
+      this.$refs.form.resetFields();
     }
   }
 };
@@ -87,12 +130,5 @@ export default {
 <style scoped>
 .update {
   margin: 20px;
-}
-.form-item {
-  display: block;
-  margin-bottom: 20px;
-}
-.form-item.button {
-  text-align: center;
 }
 </style>

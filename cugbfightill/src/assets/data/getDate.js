@@ -1,22 +1,16 @@
-let date = new Date();
-date.dateString = {
-  year: date.getFullYear(),
-  month: date.getMonth() + 1,
-  date: date.getDate(),
-  hours: date.getHours()
-};
-
-let dateString =
-  date.dateString.year +
-  "-" +
-  date.dateString.month +
-  "-" +
-  date.dateString.date;
-let time;
-if (date.dateString.hours <= 10) {
-  time = `${date.dateString.hours - 1}:57:24`;
-} else {
-  time = `${date.dateString.hours - 4}:57:24`;
+function bu2Wei(str) {
+  str = String(str);
+  while (str.length < 2) {
+    str = "0" + str;
+  }
+  return str;
+}
+function date2Str(date) {
+  return [
+    date.getFullYear(),
+    bu2Wei(date.getMonth() + 1),
+    bu2Wei(date.getDate())
+  ].join("-");
 }
 
-export { dateString, time };
+export { date2Str };
