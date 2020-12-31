@@ -43,26 +43,6 @@
           >
             <li>{{ item }}</li>
           </ul>
-          <!-- 插入导师证明图片 -->
-          <!-- <el-image
-            style="width: 100px; height: 100px"
-            :src="url1"
-            @click="showViewer1 = true"
-            fit="cover"
-          >
-          </el-image>
-          <el-image-viewer
-            v-if="showViewer1"
-            :on-close="closeViewer"
-            :url-list="srcList1"
-          /> -->
-          <ul
-            class="content"
-            v-for="(item, i) in applicationInfor[2]"
-            :key="'3-' + i"
-          >
-            <li>{{ item }}</li>
-          </ul>
           <!-- 插入健康码图片 -->
           <el-image
             style="width: 100px; height: 200px"
@@ -76,6 +56,27 @@
             :on-close="closeViewer"
             :url-list="[url2]"
           />
+          <ul
+            class="content"
+            v-for="(item, i) in applicationInfor[2]"
+            :key="'3-' + i"
+          >
+            <li>{{ item }}</li>
+          </ul>
+          <!-- 插入导师证明图片 -->
+          <el-image
+            style="width: 100px; height: 50px"
+            :src="url1"
+            @click="showViewer1 = true"
+            fit="cover"
+          >
+          </el-image>
+          <el-image-viewer
+            v-if="showViewer1"
+            :on-close="closeViewer"
+            :url-list="[url1]"
+          />
+
           <ul class="content" v-for="(item, i) in applicationInfor[3]" :key="i">
             <li>{{ item }}</li>
           </ul>
@@ -91,9 +92,9 @@
 
           <div class="vresults">
             <div class="item">
-              <div class="tit">辅导员</div>
-              <div class="text">通过</div>
-              <div class="text">审核意见：</div>
+              <div class="tit">辅导员 [吕菲菲-2020020010]</div>
+              <div class="text">通过 {{ dateString }} {{ time }}</div>
+              <div class="text">审核意见：同意</div>
             </div>
             <div class="item">
               <div class="tit">学院</div>
@@ -101,8 +102,8 @@
               <div class="text">审核意见：</div>
             </div>
             <div class="item">
-              <div class="tit">学工处 [学生处-10001]</div>
-              <div class="text">通过 {{ dateString }} {{ time }}</div>
+              <div class="tit">学工处</div>
+              <div class="text">通过</div>
               <div class="text">审核意见：</div>
             </div>
           </div>
@@ -141,8 +142,8 @@ export default {
       applicationInfor: [],
 
       activeKey: ["2", "3"],
-      url1: require("../assets/img/临时进出校审批表1.png"),
-      srcList1: [require("../assets/img/临时进出校审批表1.png")],
+      url1: require("../assets/img/王建业电子签名.png"),
+
       url2: require("../assets/img/健康码.jpg"),
 
       showViewer1: false,
@@ -175,19 +176,19 @@ export default {
   },
   created() {
     this.date = new Date();
-    this.date.setMinutes(this.date.getMinutes() - 51);
+    this.date.setMinutes(this.date.getMinutes() - 41);
     this.time = this.date2timeStr(this.date);
     this.dateString = this.$route.query.date;
     this.url2 =
       localStorage.getItem("jianKangMa") || require("../assets/img/健康码.jpg");
     this.applicationInfor = [
       ["临时进出校类别：临时出校", "出发地："],
-      [`进出校日期：${this.dateString}`, "目的地：五道口东源大厦"],
-      ["我承诺对上述填写信息的真实性负责：是", "健康码："],
+      [`进出校日期：${this.dateString}`, "目的地：金隅嘉华大厦", "健康码："],
+      //插图
+      ["出校原因：实习任务", "进校原因：", "导师/家长知情同意证明："],
+      //插图
       [
-        "出校原因：实习任务",
-        "进校原因：",
-
+        "我承诺对上述填写信息的真实性负责：是",
         "位置信息：北京市海淀区学院路街道成府路中国地质大学(北京)"
       ]
     ];
