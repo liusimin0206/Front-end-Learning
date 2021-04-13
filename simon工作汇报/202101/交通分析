@@ -1,0 +1,3167 @@
+import '@babel/polyfill'
+import Vue from 'vue'
+import App from './App.vue'
+import router from './router'
+import store from './store'
+import api from './api'
+import Antd, { message } from 'ant-design-vue'
+import VueBus from 'vue-bus'
+import md5 from 'js-md5'
+import _ from 'lodash'
+import { getClientUnique, nameMap } from '@/utils/helper'
+import { eventCollectMap } from '@/utils/eventCollect'
+import MyComponents from '@/utils/register'
+import Cookies from 'js-cookie'
+import VueClipboard from 'vue-clipboard2'
+import VueSocketIO from 'vue-socket.io'
+import 'ant-design-vue/dist/antd.css'
+import './assets/iconfont/iconfont.css'
+import './assets/iconfont/iconfont.js'
+import './assets/css/reset.css'
+import './assets/css/main.css'
+Vue.config.productionTip = false
+VueClipboard.config.autoSetContainer = true
+Vue.use(Antd)
+Vue.use(VueBus)
+Vue.use(VueClipboard)
+Vue.use(MyComponents)
+message.config({
+  top: '80px'
+})
+Vue.prototype.$api = api
+Vue.prototype.$md5 = md5
+Vue.prototype._ = _
+Vue.prototype.Cookies = Cookies
+Vue.prototype.$localStorage = localStorage
+Vue.prototype.$getClientUnique = getClientUnique
+const SOCKET_URL = `${process.env.VUE_APP_SOCKETIO_API}`
+Vue.use(new VueSocketIO({
+  debug: true,
+  connection: SOCKET_URL
+}))
+const id = getClientUnique()
+const userInfo = Cookies.getJSON('userInfoAI')
+router.beforeEach(async (to, from, next) => {
+  next()
+  const { params, name } = to
+  if (to !== from) {
+    api.home.userRecord({
+      token: userInfo && userInfo.token,
+      userId: userInfo && userInfo.userId,
+      mac: id
+    })
+  }
+  if (params && eventCollectMap[params.id] && nameMap.indexOf(name) > -1) {
+    api.home.eventCollect({
+      token: userInfo && userInfo.token,
+      userId: userInfo && userInfo.userId,
+      mac: id,
+      ...eventCollectMap[params.id]
+    })
+  } else if (name && eventCollectMap[name]) {
+    api.home.eventCollect({
+      token: userInfo && userInfo.token,
+      userId: userInfo && userInfo.userId,
+      mac: id,
+      ...eventCollectMap[name]
+    })
+  }
+})
+new Vue({
+  router,
+  store,
+  render: h => h(App)
+}).$mount('#app')
+<template>
+  <div class="normal-template">
+    <Spin v-if="loading"/>
+    <ErrorPage v-else-if='errFlag' @left='refresh' @right='goHome'/>
+    <div class="outer-container" v-else>
+      <div class="goback" @click="goback"><a-icon type="left" />返回</div>
+      <Card :cardInfo="abilityInfo.cardInfo">
+        <div slot="extra" class="video-demo" @click="visible=true" v-if='$route.params.id && parseInt($route.params.id) === 6'>
+          <i class="iconfont icon-bofang"></i>
+          <span>功能演示</span>
+        </div>
+      </Card>
+      <h3 class="title">功能体验</h3>
+      <component :is="functionalType"
+        :uploadOption="uploadOptions"
+        :beforeUpload="beforeUpload"
+        :imagesDataList="imagesDataList"
+        :imgUploading.sync="imgUploading"
+        :currentIndex.sync='currentIndex'
+        :tips='tips'
+        :base64Params="base64Params"
+        @handerRes="handerRes"
+        @onFileChange="onFileChange"
+        @clickUpload='clickUpload'
+      ></component>
+      <h3 class="title">应用场景</h3>
+      <ApplyScene :caseList="abilityInfo.sceneList"></ApplyScene>
+      <a-modal title="演示视频" v-model="visible" @cancel="visible=false" class="mask-demo-modal" :width="690" :footer="null">
+        <video src="/aiplatform_web/mask/example/inputstream" controls autoplay></video>
+      </a-modal>
+    </div>
+    <Footer/>
+  </div>
+</template>
+<script>
+import Card from './Card'
+import Functional from './Functional'
+import FunctionalMatting from './FunctionalMatting'
+import FuMark from './FunctionalMark'
+import ApplyScene from './ApplyScene'
+import { getObjectURL, NormalUploadUrl, getBase64Url, getBase64, isReturnImage, codeMap } from '@/utils/helper'
+import Spin from '@/components/Spin.vue'
+import Footer from '@/components/Footer.vue'
+import ErrorPage from './Error'
+import { abilityAwait } from '@/constants/abiliteStatic.js'
+export default {
+  components: {
+    Spin,
+    Card,
+    FnNormal: Functional,
+    FnMatting: FunctionalMatting,
+    FuMark,
+    ApplyScene,
+    ErrorPage,
+    Footer
+  },
+  data () {
+    return {
+      functionalType: 'FnNormal',
+      abilityInfo: {},
+      imagesDataList: [],
+      fileObj: {},
+      imgUploading: false,
+      currentIndex: 0,
+      initLen: 0,
+      loading: false,
+      tips: null,
+      visible: false,
+      errFlag: false,
+      tryFlag: false,
+      fileListLen: 0,
+      base64Params: {}
+    }
+  },
+  computed: {
+    uploadOptions () {
+      return {
+        action: NormalUploadUrl[this.$route.params.id],
+        name: 'imgFile',
+        accept: 'image/*',
+        disabled: this.tryFlag
+      }
+    }
+  },
+  watch: {
+    '$route' (to, from) {
+      if (this.$route.params.id) {
+        if (Number(this.$route.params.id) === 117) {
+          this.functionalType = 'FnMatting'
+        } else if (Number(this.$route.params.id) === 237) { 
+          this.functionalType = 'FuMark'
+        } else {
+          this.functionalType = 'FnNormal'
+        }
+        this.getTemplateData(this.$route.params.id)
+      }
+    }
+  },
+  created () {
+    if (Number(this.$route.params.id) === 117) {
+      this.functionalType = 'FnMatting'
+    } else if (Number(this.$route.params.id) === 237) { 
+      this.functionalType = 'FuMark'
+    } else {
+      this.functionalType = 'FnNormal'
+    }
+    this.getTemplateData(this.$route.params.id)
+  },
+  methods: {
+    getTemplateData (id) {
+      this.loading = true
+      const flag = id && parseInt(id)
+      if (flag === 18 || flag === 19) {
+        this.tips = '目前仅支持单叶检测，请上传单叶图片'
+      } else {
+        this.tips = null
+      }
+      this.$api.AIdetails.getOcrTemplateData(id).then(res => {
+        this.loading = false
+        if (res.code === 200) {
+          this.errFlag = false
+          const { status } = res.data
+          const cardInfo = {
+            imgUrl: res.data && res.data.responseCoverUrl,
+            title: res.data && res.data.name,
+            labels: res.data && res.data.scene,
+            content: res.data && res.data.description,
+            times: res.data && res.data.times
+          }
+          this.tryFlag = status && status === 2
+          this.abilityInfo = {
+            cardInfo,
+            sceneList: res.data && res.data.sceneList
+          }
+          const len = 0
+          this.currentIndex = len
+          if (status && status === 2) {
+            this.imagesDataList = abilityAwait[id]
+            return
+          }
+          let { url, hdfsBaseUrl } = res.data && res.data
+          url = url && url.split(',||,')
+          const array = url ? url.map(item => {
+            return {
+              imgUrl: `${hdfsBaseUrl}${item}`
+            }
+          }) : []
+          this.imagesDataList = array
+          const demoUrl = array[len].imgUrl
+          this.initLen = array.length - 1
+          this.uploadUrlFile({ url: demoUrl, len: 0 })
+        } else {
+          this.errFlag = true
+          this.$message.error(res.msg)
+        }
+      }).catch(() => {
+        this.errFlag = true
+        this.loading = false
+      })
+    },
+    uploadUrlFile ({ url, len }) {
+      this.imgUploading = true
+      getBase64Url(url, (data) => {
+        const base64 = data.split('base64,')[1]
+        if (Number(this.$route.params.id) === 237) {
+          this.currentIndex = len
+          this.base64Params = { base64, len, isBtn: false }
+          this.imgUploading = false
+          return
+        }
+        this.handerRes(base64, len)
+      })
+    },
+    goback () {
+      this.$router.go(-1)
+    },
+    onFileChange ({ fileList }) {
+      this.fileListLen = fileList.length
+    },
+    beforeUpload (file) {
+      this.imgUploading = true
+      const imageTypeList = [
+        'image/jpeg',
+        'image/png',
+        'image/jpg',
+        'image/bmp',
+        'image/svg',
+        'image/webp'
+      ]
+      const isJPG = imageTypeList.indexOf(file.type) !== -1
+      const url = getObjectURL(file)
+      this.$set(this.fileObj, 'imgUrl', url)
+      if (!isJPG) {
+        this.$message.error('只图片支持的格式为PNG、JPG、JPEG、BMP等!')
+        this.imgUploading = false
+        return false
+      }
+      const isLt4M = file.size / 1024 / 1024 < 4
+      if (!isLt4M) {
+        this.$message.error('图片大小请限制在4M以内!')
+        this.imgUploading = false
+        return false
+      }
+      this.$set(this.imagesDataList, this.imagesDataList.length, { ...this.fileObj })
+      this.currentIndex = this.imagesDataList.length - 1
+      getBase64(file, (res) => {
+        const base64 = res.split('base64,')[1]
+        if (Number(this.$route.params.id) === 237) {
+          this.base64Params = { base64, len: this.fileListLen + this.initLen, isBtn: true }
+          this.imgUploading = false
+          return
+        }
+        this.handerRes(base64, null, true)
+      })
+      return false
+    },
+    clickUpload (params) {
+      this.uploadUrlFile(params)
+    },
+    refresh () {
+      this.getTemplateData(this.$route.params.id)
+    },
+    goHome () {
+      this.$router.push({
+        name: 'home'
+      })
+    },
+    handerRes (base64, len, isBtn = false, param = {}) {
+      if (Number(this.$route.params.id) === 237 && isBtn === false) {
+        this.imgUploading = true
+      }
+      const newParams = {}
+      if (isReturnImage.includes(Number(this.$route.params.id))) {
+        newParams.return_image = true
+        newParams.area_points = param.area_points
+      }
+      this.$api.AIdetails.abilityResult(this.uploadOptions.action, {
+        image: base64,
+        ...newParams
+      }).then(res => {
+        this.imgUploading = false
+        let { id } = this.$route.params
+        id = id && parseInt(id)
+        if (res.code === 200) {
+          if (id === 18 || id === 19) {
+            this.$set(isBtn ? this.fileObj : this.imagesDataList[len], 'score', { ...res.data })
+          } else if (id === 11) {
+            this.$set(isBtn ? this.fileObj : this.imagesDataList[len], 'imgUrlList', [...res.data])
+          }
+          const currentBoxInfo = {}
+          if (id === 237) {
+            currentBoxInfo.box = param.box
+            currentBoxInfo.canvasSize = param.canvasSize
+            this.$set(this.imagesDataList, isBtn ? this.fileListLen + this.initLen : len, isBtn ? { ...this.fileObj, ...res.data, resJson: res } : { ...this.imagesDataList[len], ...res.data, ...currentBoxInfo, resJson: res })
+            return
+          }
+          this.$set(this.imagesDataList, isBtn ? this.fileListLen + this.initLen : len, isBtn ? { ...this.fileObj, ...res.data, resJson: res } : { ...this.imagesDataList[len], ...res.data, resJson: res })
+        } else {
+          this.$set(this.fileObj, 'resJson', res)
+          this.$set(this.imagesDataList, isBtn ? this.fileListLen + this.initLen : len, isBtn ? { ...this.fileObj } : { ...this.imagesDataList[len], ...res.data, resJson: res })
+          const msg = res.code && [239, 238].includes(id) && codeMap[res.code]
+          if (res && res.msg) {
+            this.$message.error(msg || res.msg)
+          } else if (res && !res.msg) {
+            this.$message.error(res)
+          }
+        }
+      }).catch((err) => {
+        this.imgUploading = false
+        if (err) {
+          const { data } = err
+          if (data && data.message) this.$message.error(data.message)
+        }
+      })
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+.normal-template{
+  height: calc(100% - 60px);
+  margin-top: 60px;
+  .outer-container{
+    padding-bottom: 20px;
+    width: 1200px;
+    margin: auto;
+    .goback{
+      height: 60px;
+      width: 80px;
+      line-height: 60px;
+      cursor: pointer;
+    }
+    .title{
+      border-top: 1px solid #b4b4b4;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      padding-top: 20px;
+      color: #3c3c3c;
+    }
+  }
+  .video-demo{
+    position: absolute;
+    top: -1px;
+    left: 92px;
+    height: 20px;
+    font-size: 12px;
+    border-radius: 4px;
+    padding: 0 10px;
+    cursor: pointer;
+    background: rgba(255,255,255,.5);
+    span{
+      display: inline-block;
+      height: 20px;
+      line-height: 20px;
+      margin-left: 5px;
+    }
+    .iconfont{
+      font-size: 15px;
+    }
+  }
+}
+</style>
+<template>
+  <div class="perple-count">
+    <Spin v-if="loading"/>
+    <ErrorPage v-else-if='errFlag' @left='refresh' @right='goHome'/>
+    <div class="outer-container" v-else>
+      <div class="goback" @click="goback"><a-icon type="left" />返回</div>
+      <Card :cardInfo="abilityInfo.cardInfo" @btn-event="applyForTrial" btnMsg='申请试用'/>
+      <div class="title">功能展示</div>
+      <video class="video-demo" :src="`${abilityInfo.hdfsBaseUrl}${abilityInfo.demoUrl}`" controls autoplay></video>
+      <div class="title">应用场景</div>
+      <ApplyScene  :caseList="abilityInfo.sceneList"/>
+    </div>
+    <Footer/>
+  </div>
+</template>
+<script>
+import ApplyScene from './ApplyScene'
+import Card from './Card'
+import Spin from '@/components/Spin.vue'
+import Footer from '@/components/Footer.vue'
+import { eventDisplayMap, eventBtnMap } from '@/utils/eventCollect'
+import ErrorPage from './Error'
+export default {
+  name: 'DetailFace',
+  components: {
+    ApplyScene,
+    Card,
+    Spin,
+    ErrorPage,
+    Footer
+  },
+  data () {
+    const { id } = this.$route.params
+    const userInfo = this.Cookies.getJSON('userInfoAI')
+    return {
+      userInfo,
+      abilityInfo: {},
+      uploadOption: {
+        action: '',
+        headers: '',
+        name: 'videoFile',
+        accept: 'video/*'
+      },
+      loading: false,
+      uploadLoading: false,
+      eventParams: eventDisplayMap[id],
+      errFlag: false,
+      eventParamsBtn: eventBtnMap[id]
+    }
+  },
+  created () {
+    this.getInfo()
+    this.eventCollect()
+  },
+  watch: {
+    '$route' (to, from) {
+      if (this.$route.params.id) {
+        this.getInfo()
+        this.eventCollect()
+      }
+    }
+  },
+  methods: {
+    eventCollect () {
+      this.$api.home.eventCollect({
+        token: this.userInfo && this.userInfo.token,
+        userId: this.userInfo && this.userInfo.userId,
+        mac: this.$getClientUnique(),
+        ...this.eventParams
+      })
+    },
+    applyForTrial () {
+      this.$api.home.eventCollect({
+        token: this.userInfo && this.userInfo.token,
+        userId: this.userInfo && this.userInfo.userId,
+        mac: this.$getClientUnique(),
+        ...this.eventParamsBtn
+      })
+      this.$router.push({
+        name: 'applyForTrial',
+        query: {
+          caseId: this.$route.params.id,
+          needApply: this.$route.query.needApply
+        }
+      })
+    },
+    getInfo () {
+      this.loading = true
+      this.$api.AIdetails.getOcrTemplateData(this.$route.params.id).then(res => {
+        this.loading = false
+        if (res.code === 200) {
+          this.errFlag = false
+          const cardInfo = {
+            imgUrl: res.data && res.data.responseCoverUrl,
+            title: res.data && res.data.name,
+            labels: res.data && res.data.scene,
+            content: res.data && res.data.description,
+            times: res.data && res.data.times
+          }
+          this.abilityInfo = {
+            cardInfo,
+            sceneList: res.data && res.data.sceneList,
+            demoUrl: res.data && res.data.demoUrl,
+            hdfsBaseUrl: res.data && res.data.hdfsBaseUrl
+          }
+        } else {
+          this.errFlag = true
+          this.$message.error(res.msg)
+        }
+      }).catch(() => {
+        this.loading = false
+        this.errFlag = true
+      })
+    },
+    goback () {
+      this.$router.go(-1)
+    },
+    beforeUpload (file) {
+      const imageTypeList = [
+        'video/mp4',
+        'video/flv',
+        'video/avi',
+        'video/rmvb',
+        'video/mov'
+      ]
+      const isJPG = imageTypeList.indexOf(file.type) !== -1
+      if (!isJPG) {
+        this.loading = false
+        this.$message.error('视频只支持的格式为mp4、flv、avi、rmvb、mov!')
+        return false
+      }
+      const isLt2M = file.size / 1024 / 1024 < 100
+      if (!isLt2M) {
+        this.loading = false
+        this.$message.error('视频大小请限制在100M以内!')
+        return false
+      }
+      return true
+    },
+    onFileChange ({ fileList, file }) {
+      console.log(file, 'file')
+    },
+    refresh () {
+      this.getInfo()
+      this.eventCollect()
+    },
+    goHome () {
+      this.$router.push({
+        name: 'home'
+      })
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+.perple-count{
+  height: calc(100% - 60px);
+  margin-top: 60px;
+  .outer-container{
+    padding-bottom: 20px;
+    width: 1200px;
+    margin: auto;
+    .video-demo{
+      width: 100%;
+      height: 600px;
+    }
+    .goback{
+      height: 60px;
+      width: 80px;
+      line-height: 60px;
+      cursor: pointer;
+      &:hover{
+        color: #e74445;
+      }
+    }
+    .title{
+      border-top: 1px solid #b4b4b4;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      padding-top: 20px;
+      color: #3c3c3c;
+    }
+  }
+}
+</style>
+<template>
+  <div class="contentTxt" style="position:relative;min-height:100%">
+    <MySpin v-if="loading"/>
+    <div v-else>
+      <h1 class="underline">{{ documentsDetail.name }}</h1>
+            <h2>功能介绍</h2>
+            <p>
+        {{ documentsDetail.introduction }}
+      </p>
+      <h2 v-show="documentsDetail.scene">适用场景</h2>
+      <p v-show="documentsDetail.scene">
+        {{ documentsDetail.scene }}
+      </p>
+      <h2>请求说明</h2>
+            <p>1) 请求URL： {{ documentsDetail.url }}</p>
+      <p>2) 调用方式： {{ documentsDetail.type }}</p>
+            <h2 v-show="documentsDetail.paramsRequire">入参要求</h2>
+      <div v-show="documentsDetail.paramsRequire.entranceMethod === '图片'">
+        <p>
+          {{ documentsDetail.paramsRequire.entranceMethod }}格式：<span
+            class="huanyuan"
+            v-for="(item, i) in documentsDetail.paramsRequire.picFormat"
+            :key="i"
+            >{{ item }}
+          </span>
+        </p>
+        <p v-show="documentsDetail.paramsRequire.picSize">图片大小：小于{{ documentsDetail.paramsRequire.picSize + documentsDetail.paramsRequire.picUnit}}</p>
+        <p v-show="documentsDetail.paramsRequire.picPixelMinSize || documentsDetail.paramsRequire.picPixelMaxSize">图片像素尺寸：最小{{ documentsDetail.paramsRequire.picPixelMinSize}} 像素, 最大{{ documentsDetail.paramsRequire.picPixelMaxSize }} 像素</p>
+      </div>
+      <div v-show="documentsDetail.paramsRequire.entranceMethod === '文本'">
+        <p v-show="documentsDetail.paramsRequire.textMaxSize">文本输入长度最长不超过 {{ documentsDetail.paramsRequire.textMaxSize }} 字</p>
+        <p v-show="documentsDetail.paramsRequire.supportLanguage">支持语言：{{ documentsDetail.paramsRequire.supportLanguage }}</p>
+        <p v-show="documentsDetail.paramsRequire.codeScheme">编码方式：{{ documentsDetail.paramsRequire.codeScheme }}</p>
+      </div>
+      <h2>请求参数</h2>
+      <p>
+        <i>Headers</i>
+      </p>
+      <a-table
+        :row-key="
+          (r, i) => {
+            return `${i}` + Math.random()
+          }
+        "
+        :columns="header.columns"
+        :data-source="header.data"
+      ></a-table>
+            <p>
+        <i>Body</i>
+      </p>
+      <a-table
+        :row-key="
+          (r, i) => {
+            return `${i}` + Math.random()
+          }
+        "
+        :columns="body.columns"
+        :data-source="body.data"
+      ></a-table>
+            <h2>返回数据</h2>
+      <a-table
+        :defaultExpandAllRows="true"
+        :row-key="
+          (r, i) => {
+            return `${i}` + Math.random()
+          }
+        "
+        :columns="result.columns"
+        :data-source="result.data"
+        :pagination="{ pageSize: 20 }"
+      ></a-table>
+      <template v-if="resultDeclaration.length">
+        <h2>结果说明</h2>
+        <div v-for="(item, index) in resultDeclaration" :key="index" style="margin-bottom:15px">
+          <p v-if="item.type === 0">{{ item.resultText }}</p>
+          <div v-else-if="item.type === 1">
+            <img :src="item.fullUrl" v-for="(item, index) in item.imgUrlList" :key="index">
+          </div>
+          <a-table
+            v-else-if="item.type === 2"
+            :row-key="
+              (r, i) => {
+                return `${i}${index}` + Math.random();
+              }
+            "
+          :columns="item.resultColumns"
+          :data-source="item.resultData"
+          :pagination="false"
+        ></a-table>
+        </div>
+      </template>
+            <h2>返回报文示例</h2>
+            <div class="code">
+        <pre
+          style="width:870px"
+          >{{ documentsDetail.resultDemo }}
+        </pre>
+      </div>
+      <p v-if="statueCode.columns.length">
+        <i>业务状态码说明</i>
+      </p>
+      <a-table
+       v-if="statueCode.data && statueCode.data.length"
+        :row-key="
+          (r, i) => {
+            return `${i}` + Math.random() + Math.random();
+          }
+        "
+        :columns="statueCode.columns"
+        :data-source="statueCode.data"
+      ></a-table>
+      <h2 v-if="documentsDetail.remark && documentsDetail.remark.trim()">注意事项</h2>
+      <p v-if="documentsDetail.remark && documentsDetail.remark.trim()">{{ documentsDetail.remark }}</p>
+    </div>
+  </div>
+</template>
+<script>
+export default {
+  data () {
+    return {
+      header: {
+        data: [],
+        columns: [],
+        enArray: ['paramName', 'paramValue', 'required', 'default', 'remark']
+      },
+      body: {
+        data: [],
+        columns: [],
+        enArray: ['paramName', 'paramValue', 'required', 'default', 'remark']
+      },
+      result: {
+        data: [],
+        columns: [],
+        enArray: ['name', 'type', 'required', 'default', 'remark', 'otherInfo']
+      },
+      statueCode: {
+        data: [],
+        columns: [],
+        enArray: ['code', 'msg', 'instruction']
+      },
+      documentsDetail: {
+        paramsRequire: {}
+      },
+      loading: false,
+      resultDeclaration: []
+    }
+  },
+  watch: {
+    '$route' (to, from) {
+      if (this.$route.query.id) {
+        this.getDocumentsDetail(Number(this.$route.query.id))
+      }
+    }
+  },
+  mounted () {
+    this.getDocumentsDetail(Number(this.$route.query.id))
+  },
+  methods: {
+    getDocumentsDetail (id) {
+      this.loading = true
+      this.$api.documentManagement.getDocumentsDetail(id).then((res) => {
+        this.loading = false
+        if (res.code === 200) {
+          this.documentsDetail = res.data
+          if (this.documentsDetail.paramsRequire) {
+            this.documentsDetail.paramsRequire = JSON.parse(
+              this.documentsDetail.paramsRequire
+            )
+          }
+          if (this.documentsDetail.headers) {
+            this.header.data = JSON.parse(this.documentsDetail.headers)
+          }
+          if (this.documentsDetail.params) {
+            this.body.data = JSON.parse(this.documentsDetail.params)
+          }
+          if (this.documentsDetail.statueCode) {
+            this.statueCode.data = JSON.parse(this.documentsDetail.statueCode)
+          }
+          if (this.documentsDetail.resultData) {
+            this.result.data = JSON.parse(this.documentsDetail.resultData).data
+            this.header.columns = JSON.parse(this.documentsDetail.resultData).headerColumn
+            this.body.columns = JSON.parse(this.documentsDetail.resultData).bodyColumn
+            this.result.columns = JSON.parse(this.documentsDetail.resultData).returnColumn
+            this.statueCode.columns = JSON.parse(this.documentsDetail.resultData).statusColumn
+            if (this.statueCode.columns.length) {
+              this.statueCode.columns = this.statueCode.columns.map((item) => {
+                return {
+                  ...item,
+                  dataIndex: item.key
+                }
+              })
+            }
+            this.header.columns = this.header.columns.map((item) => {
+              return {
+                ...item,
+                dataIndex: item.key
+              }
+            })
+            this.body.columns = this.body.columns.map((item) => {
+              return {
+                ...item,
+                dataIndex: item.key
+              }
+            })
+            this.result.columns = this.result.columns.map((item) => {
+              return {
+                ...item,
+                dataIndex: item.key
+              }
+            })
+          }
+          this.resultDeclaration = JSON.parse(res.data.resultDeclaration)
+          if (this.resultDeclaration.length) {
+            this.resultDeclaration = this.resultDeclaration.map((item) => {
+              if (item.type === 2) {
+                item.resultColumns = item.resultColumns.map((item) => {
+                  return {
+                    title: item.title,
+                    dataIndex: item.key
+                  }
+                })
+              }
+              return item
+            })
+          }
+        } else {
+          this.$message.error(res.msg)
+        }
+      }).catch(() => {
+        this.loading = false
+      })
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+@import "./document_style.less";
+</style>
+@prefixCls: contentTxt;
+.@{prefixCls} {
+  padding: 10px 50px;
+  background-color: #fff;
+  font-family: Source Han Sans CN;
+  color: rgba(56, 56, 56, 1);
+  h1 {
+    color: #383838;
+    font-size: 20px;
+    font-weight: bold;
+    line-height: 36px;
+    background-color: #fff;
+    padding: 0 0 10px 0;
+  }
+  h2 {
+    font-size: 18px;
+    font-weight: bold;
+    line-height: 36px;
+    padding: 10px 0 0 0;
+  }
+  h3 {
+    font-size:12px;
+    font-weight:bold;
+    line-height:36px;
+  }
+  h3.bigger {
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 36px;
+    margin-top: 10px;
+  }
+  .underline {
+    border-bottom: 1px solid #f1f1f1;
+  }
+  p {
+    font-size: 12px;
+    line-height: 22px;
+    margin: 15px 0;
+    word-break:break-all;
+    span {
+      color: #289ffe;
+      cursor: pointer;
+      &.huanyuan{
+        color: #383838;
+        cursor: default;
+      }
+    }
+    i {
+      font-weight: bold;
+    }
+    .inner-line{
+      color: #383838;
+      display: block;
+      font-weight: normal;
+    }
+  }
+  img {
+    width: 100%;
+  }
+  ul {
+    list-style-type: disc;
+    font-size: 12px;
+    line-height: 22px;
+    padding: 0 30px;
+  }
+    div.code {
+    border: 1px solid rgb(239, 241, 242);
+    font-size: 12px;
+    line-height: 22px;
+    background-color: rgb(248, 248, 248);
+    margin: 15px 0;
+    padding: 10px;
+    .green {
+      color: #00c957;
+    }
+    .blue {
+      color: #4169e1;
+    }
+    .red {
+      color: #e3170d;
+    }
+  }
+  span.code {
+    border: 1px solid rgb(239, 241, 242);
+    font-size: 12px;
+    line-height: 22px;
+    background-color: rgb(248, 248, 248);
+    padding: 2px 4px;
+  }
+    /deep/.ant-table-pagination.ant-pagination {
+    display: none;
+  }
+    /deep/.ant-table-tbody > tr > td {
+    vertical-align: middle;
+  }
+}
+<template>
+  <div>
+    <a-row :gutter="24">
+      <a-col :span="6">
+        <h5>应用</h5>
+        <a-spin :spinning="appNumLoading">
+          <div class="app-wrapper">
+            <h3>{{ appNum }}</h3>
+            <p>已创建应用</p>
+            <a-button
+              @click="handleToPage('/control/application/list')"
+              type="primary"
+            >管理应用</a-button>
+            <a-button @click="handleToPage('/control/application/create')">创建应用</a-button>
+          </div>
+        </a-spin>
+      </a-col>
+      <a-col :span="18">
+        <a-spin :spinning="apiUsedLoading">
+          <h5>已接入API用量查询
+            <span>请选择时间段：
+              <a-range-picker
+                :allowClear="false"
+                :format="dateFormat"
+                :default-value="[moment(new Date()).add(0, 'days'), moment()]"
+                :ranges="{ '今天': [moment(), moment()], '昨天': [moment(new Date()).add(-1, 'days'), moment()], '过去3天': [moment(new Date()).add(-3, 'days'), moment()], '过去7天': [moment(new Date()).add(-7, 'days'), moment()], '过去一个月': [moment(new Date()).add(-1, 'month'), moment()], '过去3个月': [moment(new Date()).add(-3, 'month'), moment()], '过去1年': [moment(new Date()).add(-1, 'year'), moment()] }"
+                :placeholder="['开始日期', '结束日期']"
+                @change="handleTimeChange"
+              >
+                <a-icon
+                  slot="suffixIcon"
+                  type="calendar"
+                />
+              </a-range-picker>
+            </span>
+          </h5>
+                    <a-empty
+            v-if="!apiUsedList.length"
+            description="暂无数据"
+            style="margin-top: 80px;"
+          />
+          <chart
+            v-else
+            style="height: 300px"
+            :option="getOption()"
+          />
+        </a-spin>
+      </a-col>
+      <a-col
+        :span="24"
+        style="margin-top: 20px;"
+      >
+        <h5>
+          已接入API列表
+          <span>请选择时间段：
+            <a-range-picker
+              :allowClear="false"
+              :format="dateFormat"
+              :default-value="[moment(new Date()).add(0, 'days'), moment()]"
+              :ranges="{ '今天': [moment(), moment()], '昨天': [moment(new Date()).add(-1, 'days'), moment()], '过去3天': [moment(new Date()).add(-3, 'days'), moment()], '过去7天': [moment(new Date()).add(-7, 'days'), moment()], '过去一个月': [moment(new Date()).add(-1, 'month'), moment()], '过去3个月': [moment(new Date()).add(-3, 'month'), moment()], '过去1年': [moment(new Date()).add(-1, 'year'), moment()] }"
+              :placeholder="['开始日期', '结束日期']"
+              @change="handleTimeChange2"
+            >
+              <a-icon
+                slot="suffixIcon"
+                type="calendar"
+              />
+            </a-range-picker>
+          </span>
+        </h5>
+        <a-table
+          row-key="apiId"
+          :columns="columns"
+          :data-source="data"
+          :loading="apiListLoading"
+          :pagination="false"
+          :locale="{ emptyText: '暂无接入数据' }"
+        >
+          <a
+            slot="action"
+            slot-scope="text, record"
+            href="javascript:;"
+            @click="handleToMonitor(record)"
+          >查看</a>
+        </a-table>
+      </a-col>
+    </a-row>
+  </div>
+</template>
+<script>
+import Chart from '@/components/Chart.vue'
+import 'moment/locale/zh-cn'
+export default {
+  name: 'Dashboard',
+  components: {
+    Chart
+  },
+  data () {
+    const moment = require('moment')
+    const columns = [
+      { title: '序号', dataIndex: 'number', key: 'number' },
+      { title: '应用', dataIndex: 'applicationName', key: 'applicationName' },
+      { title: 'API', dataIndex: 'apiName', key: 'apiName' },
+      { title: '调用成功', dataIndex: 'successCallNum', key: 'successCallNum' },
+      { title: '调用失败', dataIndex: 'failCallNum', key: 'failCallNum' },
+      { title: '失败率', dataIndex: 'failRatio', key: 'failRatio' },
+      { title: '免费调用限量', dataIndex: 'freeCallNum', key: 'freeCallNum' },
+      { title: 'QPS限额', dataIndex: 'qps', key: 'qps' },
+      { title: '详细统计', dataIndex: 'action', key: 'action', scopedSlots: { customRender: 'action' } }
+    ]
+    return {
+      breadCrumb: [
+        {
+          name: '概览',
+          path: ''
+        }
+      ],
+      appNum: 0,
+      columns,
+      data: [],
+      apiUsedList: [],
+      moment,
+      startTime: '',
+      endTime: '',
+      appNumLoading: false,
+      apiListLoading: false,
+      apiUsedLoading: false,
+      dateFormat: 'YYYY-MM-DD',
+      usedSearchDate: [moment().format('YYYY-MM-DD'), moment().format('YYYY-MM-DD')],
+      listSearchDate: [moment().format('YYYY-MM-DD'), moment().format('YYYY-MM-DD')]
+    }
+  },
+  created () {
+    this.$store.commit('changeBreadCrumb', [
+      {
+        name: '概览',
+        path: ''
+      }
+    ])
+    this.getMyAppNum()
+    this.getMyApiList()
+    this.getMyApiUsed()
+  },
+  methods: {
+    getMyAppNum () {
+      this.appNumLoading = true
+      this.$api.AIcontroller.getMyAllAppNum().then(res => {
+        this.appNumLoading = false
+        if (res.code === 200) {
+          this.appNum = res.data
+        }
+      }).catch(() => {
+        this.appNumLoading = false
+      })
+    },
+    getMyApiList () {
+      this.apiListLoading = true
+      this.$api.AIcontroller.getMyAllApiList({
+        dataStr: this.listSearchDate.join(','),
+        timeType: 8
+      }).then(res => {
+        this.apiListLoading = false
+        if (res.code === 200) {
+          this.data = res.data.map((item, index) => {
+            item.key = item.number = Number(index + 1)
+            item.callNum = item.successCallNum + item.failCallNum
+            return {
+              ...item
+            }
+          })
+        } else {
+          this.$message.error(res.msg)
+        }
+      }).catch(() => {
+        this.apiListLoading = false
+      })
+    },
+    getMyApiUsed () {
+      this.apiUsedLoading = true
+      this.$api.AIcontroller.getMyAllApiUsed({
+        dataStr: this.usedSearchDate.join(','),
+        timeType: 8
+      }).then(res => {
+        this.apiUsedLoading = false
+        if (res.code === 200) {
+          this.apiUsedList = res.data
+        } else {
+          this.$message.error(res.msg)
+        }
+      }).catch(() => {
+        this.apiUsedLoading = false
+      })
+    },
+    handleToPage (path) {
+      this.$router.push({ path })
+    },
+    handleToMonitor (app) {
+      this.$router.push({
+        path: '/control/monitor',
+        query: {
+          applicationId: app.applicationId,
+          apiId: app.apiId,
+          dataStr: this.listSearchDate.join(',')
+        }
+      })
+    },
+    handleTimeChange (value, dateString) {
+      this.usedSearchDate = dateString
+      this.getMyApiUsed()
+    },
+    handleTimeChange2 (value, dateString) {
+      this.listSearchDate = dateString
+      this.getMyApiList()
+    },
+    getOption () {
+      return {
+        grid: {
+          top: '4%',
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'category',
+          data: this.apiUsedList.map(item => item.apiName),
+          axisLabel: {
+            interval: 0,
+            rotate: 50
+          }
+        },
+        yAxis: {
+          type: 'value',
+          splitLine: {
+            lineStyle: {
+              type: 'dotter'
+            }
+          }
+        },
+        series: [{
+          data: this.apiUsedList.map(item => item.successCallNum),
+          type: 'bar',
+          barWidth: '30%',
+          itemStyle: {
+            color: '#5AA4FF'
+          },
+          showBackground: false,
+          backgroundStyle: {
+            color: '#fff',
+            borderColor: '#ccc',
+            borderWidth: 0.2,
+            borderType: 'solid'
+          }
+        }]
+      }
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+h5 {
+  height: auto;
+  overflow: hidden;
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 20px;
+  color: #666;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  span {
+    font-size: 14px;
+    font-weight: 400;
+  }
+}
+.app-wrapper {
+  width: 100%;
+  height: 300px;
+  border: #ebebeb solid 1px;
+  border-radius: 5px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  h3 {
+    font-size: 48px;
+    margin-bottom: 20px;
+  }
+  p {
+    padding: 10px;
+  }
+  button {
+    margin-bottom: 10px;
+  }
+}
+</style>
+<template>
+  <div class="home">
+    <Header />
+    <div class="home-container">
+      <Menu />
+      <div class="container-right">
+        <BreadCrumb />
+        <div class="right-body">
+          <router-view class="home-router-viewer" />
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+import Header from './components/Header.vue'
+import Menu from './components/Menu.vue'
+import BreadCrumb from './components/Breadcrumb.vue'
+export default {
+  name: 'controlHome',
+  components: {
+    Header,
+    Menu,
+    BreadCrumb
+  }
+}
+</script>
+<style lang="less" scoped>
+.home {
+  min-width: 1200px;
+  height: 100%;
+  .home-container {
+    min-width: 1200px;
+    width: 100%;
+    display: flex;
+    height: calc(100% - 60px);
+    justify-content: space-around;
+    .container-right {
+      flex: 1;
+      background: #e8ecf0;
+    }
+    .right-body {
+      max-height: calc(100% - 60px);
+      overflow-y: auto;
+      .home-router-viewer {
+        border-radius: 10px;
+        margin: 20px;
+        background: #fff;
+        padding: 20px;
+        min-height: calc(100vh - 160px);
+      }
+    }
+  }
+}
+</style>
+<template>
+  <div class="home-icon" v-if='!($route.meta && $route.meta.notShowIcon)'>
+    <div class="action" :class='{ init: active === 0 }' @mouseenter="changeAction(0)"  @mouseleave="changeAction(null)" @click="goTo">
+      <span class="iconfont frame-icon icon-kefu"></span>
+    </div>
+    <div v-show="active === 0" @mouseenter="changeAction(0)"  @mouseleave="changeAction(null)" class="model-outer">
+      <div class="bg">
+        <div class="model-left">
+        <div class="model-inner">
+          <span class="iconfont icon-model icon-dianhua1"></span>
+          010-62607600
+        </div>
+        <div class="model-inner consulting">
+          <span class="iconfont icon-model icon-kefu1"></span>
+          <router-link to="/workOrders/selectQuestion"> 在线咨询</router-link>
+        </div>
+      </div>
+      <div class="mod-triangle">
+        <div class="t-border"></div>
+      </div>
+    </div>
+    </div>
+  </div>
+</template>
+<script>
+export default {
+  name: 'SuspensionFrame',
+  data () {
+    return {
+      active: null
+    }
+  },
+  methods: {
+    changeAction (state) {
+      this.active = state
+    },
+    goTo () {
+      this.$router.push({
+        path: '/cooperation'
+      })
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+.home-icon{
+  position: fixed;
+  right: 20px;
+  bottom: 25%;
+  box-shadow: 0 4px 4px 4px rgba( 0, 0, 0, 0.15);
+  border-radius: 5px;
+  z-index: 1000;
+  .frame-icon{
+    font-size: 40px;
+  }
+  .model-outer{
+    padding-right: 20px;
+    position: absolute;
+    left:-165px;
+    top:-10px;
+    width: 170px;
+    font-size: 14px;
+    .icon-model{
+      font-size: 18px;
+    }
+    .bg{
+      box-shadow: 0px 2px 6px 2px rgba(118,118,118,0.2);
+    }
+    .consulting{
+      color: #379AFF;
+    }
+    .model-left{
+      background-color: #fff;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .model-inner{
+      padding: 5px 0;
+    }
+    .mod-triangle{
+      position:relative;
+      right:-149px;
+      bottom:58px;
+      z-index:10;
+      .t-border{
+        left:0px;
+        top:0px;
+        width:0;
+        height:0;
+        font-size:0;
+        overflow:hidden;
+        position:absolute;
+        border-width:12px;
+        border-style:dashed dashed dashed solid;
+      }
+      .t-border{
+        border-color:transparent transparent transparent #fff;
+        left:1px;
+      }
+    }
+  }
+  .action{
+    width: 50px;
+    text-align: center;
+    background: #fff;
+    padding: 15px 5px 10px;
+    font-size: 14px;
+    font-family: Source Han Sans CN Regular, Source Han Sans CN Regular-Regular;
+    font-weight: 400;
+    text-align: center;
+    color: #252525;
+    line-height: 20px;
+    cursor: pointer;
+    color: #379AFF;
+  }
+  .init{
+    color: #fff;
+    background: #379AFF;
+  }
+}
+</style>
+<template>
+  <div class="error-page">
+      <div class="error-code">4<span>0</span>4</div>
+      <div class="error-desc">啊哦~ 你所访问的页面不存在</div>
+      <div class="error-handle">
+          <router-link to="/">
+            <el-button type="primary" size="large">返回首页</el-button>
+          </router-link>
+          <el-button class="error-btn" type="primary" size="large" @click="goBack">返回上一页</el-button>
+      </div>
+  </div>
+</template>
+<script>
+export default {
+  methods: {
+    goBack () {
+      this.$router.go(-1)
+    }
+  }
+}
+</script>
+<style scoped>
+    .error-page{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        background: #f3f3f3;
+        box-sizing: border-box;
+    }
+    .error-code{
+        line-height: 1;
+        font-size: 250px;
+        font-weight: bolder;
+        color: #2d8cf0;
+    }
+    .error-code span{
+        color: #00a854;
+    }
+    .error-desc{
+        font-size: 30px;
+        color: #777;
+    }
+    .error-handle{
+        margin-top: 30px;
+        padding-bottom: 200px;
+    }
+    .error-btn{
+        margin-left: 100px;
+    }
+</style>
+<template>
+  <div class="ability-video-template">
+    <Spin  v-if='loading'/>
+    <ErrorPage v-else-if='errFlag' @left='refresh' @right='goHome'/>
+    <div class="outer-container" v-else>
+      <div class="goback" @click="goback"><a-icon type="left" />返回</div>
+      <Card  :cardInfo="abilityInfo.cardInfo"/>
+      <div class="title">功能体验</div>
+      <FunctionalVideo
+        :videoUrl='videoUrl'
+        :sourceUrl="sourceUrl"
+        :uploadOption='uploadOption'
+        :loading='uploadLoading'
+        :beforeUpload='beforeUpload'
+        @onFileChange='onFileChange'/>
+      <div class="title">应用场景</div>
+      <ApplyScene  :caseList="abilityInfo.sceneList"/>
+    </div>
+    <Footer/>
+  </div>
+</template>
+<script>
+import ApplyScene from './ApplyScene'
+import Card from './Card'
+import FunctionalVideo from './FunctionalVideo.vue'
+import Spin from '@/components/Spin.vue'
+import Footer from '@/components/Footer.vue'
+import ErrorPage from './Error'
+export default {
+  name: 'perple-count',
+  components: {
+    ApplyScene,
+    Card,
+    FunctionalVideo,
+    Spin,
+    ErrorPage,
+    Footer
+  },
+  data () {
+    return {
+      abilityInfo: {},
+      uploadLoading: false,
+      videoUrl: null,
+      sourceUrl: null,
+      loading: false,
+      errFlag: false
+    }
+  },
+  computed: {
+    uploadOption () {
+      const caseId = this.$route.params.id
+      let res = {}
+      if (Number(caseId) === 80) {
+        res = {
+          action: '/aiplatform_web/bodyrecognition/head/peopleCount',
+          name: 'videoFile',
+          accept: 'video/*'
+        }
+      } else if (Number(caseId) === 13) {
+        res = {
+          action: '/aiplatform_web/road/abnormal_parking_detect',
+          name: 'videoFile',
+          accept: 'video/*'
+        }
+      }
+      return res
+    }
+  },
+  watch: {
+    '$route' (to, from) {
+      if (this.$route.params.id) {
+        this.getInfo()
+      }
+    }
+  },
+  created () {
+    this.getInfo()
+  },
+  methods: {
+    getInfo () {
+      this.loading = true
+      this.$api.AIdetails.getOcrTemplateData(this.$route.params.id).then(res => {
+        this.loading = false
+        if (res.code === 200) {
+          this.errFlag = false
+          const cardInfo = {
+            imgUrl: res.data && res.data.responseCoverUrl,
+            title: res.data && res.data.name,
+            labels: res.data && res.data.scene,
+            content: res.data && res.data.description,
+            times: res.data && res.data.times
+          }
+          this.abilityInfo = {
+            cardInfo,
+            sceneList: res.data && res.data.sceneList
+          }
+        } else {
+          this.errFlag = true
+        }
+      }).catch(() => {
+        this.loading = false
+        this.errFlag = true
+      })
+    },
+    goback () {
+      this.$router.go(-1)
+    },
+    beforeUpload (file) {
+      const imageTypeList = [
+        'video/mp4',
+        'video/flv',
+        'video/avi',
+        'video/rmvb',
+        'video/mov',
+      ]
+      const isJPG = imageTypeList.indexOf(file.type) !== -1
+      if (!isJPG) {
+        this.$message.error('视频只支持mp4、flv、avi、rmvb、mov格式')
+        return false
+      }
+      const isLt100M = file.size / 1024 / 1024 < 100
+      if (!isLt100M) {
+        this.$message.error('视频大小请限制在100M以内!')
+        return false
+      }
+      return true
+    },
+    onFileChange ({ fileList, file }) {
+      this.uploadLoading = true
+      this.sourceUrl = null
+      this.videoUrl = null
+      if (file.status === 'done') {
+        this.uploadLoading = false
+        if (file.response && file.response.code === 200) {
+          this.sourceUrl = file.response.data.source_hdfs_path
+          this.videoUrl = file.response.data.remote_hdfs_path
+        } else {
+          this.$message.error(file.response.msg)
+        }
+      } else if (file.status === 'error') {
+        this.uploadLoading = false
+        this.$message.error('上传失败，请重试')
+      }
+    },
+    refresh () {
+      this.getInfo()
+    },
+    goHome () {
+      this.$router.push({
+        name: 'home'
+      })
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+.ability-video-template{
+  height: calc(100% - 60px);
+  margin-top: 60px;
+  .outer-container{
+    padding-bottom: 20px;
+    width: 1200px;
+    margin: auto;
+    .goback{
+      height: 60px;
+      width: 80px;
+      line-height: 60px;
+      cursor: pointer;
+      &:hover{
+        color: #e74445;
+      }
+    }
+    .title{
+      border-top: 1px solid #b4b4b4;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      padding-top: 20px;
+      color: #3c3c3c;
+    }
+  }
+}
+</style>
+<template>
+  <div class="auto-header">
+    <div class="auto-header-body">
+      <div class="header-top">
+        <a-row>
+          <a-col :span="4" style="min-width:200px">
+            <div
+              class="logo-box"
+              @click="back"
+            >
+              <img src="../assets/img/logo1_1.png" />
+              <span class="logo-title">深延AI开放平台</span>
+            </div>
+          </a-col>
+          <a-col :span="14">
+            <div class="top-nav">
+              <a-dropdown
+                overlayClassName="overlay-Class-AI-apply"
+                placement="bottomLeft"
+                v-model="abilityDropdown"
+                @click="e => e.preventDefault()"
+              >
+                <span>开放能力</span>
+                <a-menu slot="overlay" @click="handleMenuClick">
+                  <a-menu-item>
+                    <AIapply :AIuse="AIuse"/>
+                  </a-menu-item>
+                </a-menu>
+              </a-dropdown>
+              <router-link to="/custom/algorithm-library" style="margin-right:45px" :class="{'active': $route.fullPath.includes('/custom/algorithm')}">定制算法库</router-link>
+              <a-dropdown>
+                <span class="ant-dropdown-link" :class="{'active': $route.fullPath.indexOf('/solution')>-1}"  @click="e => e.preventDefault()">解决方案</span>
+                <a-menu slot="overlay">
+                  <a-menu-item>
+                    <span style="fontSize: 12px" @click="goToSolution('/solution/smartClassroom')">智慧教室</span>
+                  </a-menu-item>
+                  <a-menu-item>
+                    <span
+                      style="fontSize: 12px"
+                      @click="goToSolution('/solution/generalMonitoring')"
+                    >通用监控</span>
+                  </a-menu-item>
+                  <a-menu-item>
+                    <span
+                      style="fontSize: 12px"
+                      @click="goToSolution('/solution/smartAILearning')"
+                    >智慧AI学习</span>
+                  </a-menu-item>
+                  <a-menu-item>
+                    <span
+                      style="fontSize: 12px"
+                      @click="goToSolution('/solution/smartBank')"
+                    >智慧银行</span>
+                  </a-menu-item>
+                  <a-menu-item>
+                    <span
+                      style="fontSize: 12px"
+                      @click="goToSolution('/solution/smartBreed')"
+                    >智慧养殖</span>
+                  </a-menu-item>
+                  <a-menu-item>
+                    <span
+                      style="fontSize: 12px"
+                      @click="goToSolution('/solution/smartInsurance')"
+                    >智慧保险</span>
+                  </a-menu-item>
+                </a-menu>
+              </a-dropdown>
+              <a-dropdown>
+                <span class="ant-dropdown-link" :class="{'active': $route.fullPath==='/partner'}" @click="e => e.preventDefault()">生态合作</span>
+                <a-menu slot="overlay">
+                  <a-menu-item>
+                    <span style="fontSize: 12px" @click="goTo('partner')">合作伙伴</span>
+                  </a-menu-item>
+                </a-menu>
+              </a-dropdown>
+              <a-dropdown>
+                <span class="ant-dropdown-link" :class="{'active': $route.fullPath.includes('about')}" @click="e => e.preventDefault()">关于我们</span>
+                <a-menu slot="overlay">
+                  <a-menu-item>
+                    <span style="fontSize: 12px" @click="goTo('introduction')">企业介绍</span>
+                  </a-menu-item>
+                  <a-menu-item>
+                    <span style="fontSize: 12px" @click="goTo('job')">加入我们</span>
+                  </a-menu-item>
+                </a-menu>
+              </a-dropdown>
+              <router-link to="/document" :class="{'active': $route.fullPath.includes('/guide')}">文档中心</router-link>
+            </div>
+          </a-col>
+          <a-col :span="5">
+            <div class="top-right">
+              <span @click="toControl" class="control">控制台</span>
+              <a-dropdown v-show="$store.state.userInfo">
+                <span class='message'>
+                  <a-badge :numberStyle="{height: '16px',minWidth: '16px',lineHeight: '16px'}" :count="totalCount" :overflow-count="99">
+                    <i class='iconfont icon-message icon-shujujierulinghuo'></i>
+                  </a-badge>
+                </span>
+                <a-menu slot="overlay" class='message-menu'>
+                  <a-menu-item>
+                    <a href="javascript:;" @click="orderCenter('centerUserOrder')">工单中心
+                      <a-badge :count="$store.state.messageInfo.orderCount" :overflow-count="99" class='message-info' v-if='$store.state.messageInfo.orderCount > 0'>
+                      </a-badge>
+                    </a>
+                  </a-menu-item>
+                </a-menu>
+              </a-dropdown>
+              <span class="login" @click="toLogin" v-show="!this.$store.state.userInfo">注册/登录</span>
+              <a-dropdown v-show="this.$store.state.userInfo">
+                <span
+                  v-show="this.$store.state.userInfo"
+                  class="ant-dropdown-link"
+                >{{this.$store.state.userInfo && this.$store.state.userInfo.userName}}
+                  <a-icon type="down" /></span>
+                <a-menu slot="overlay">
+                  <a-menu-item>
+                    <a
+                      href="javascript:;"
+                      @click="userProfile"
+                    >个人中心</a>
+                  </a-menu-item>
+                  <a-menu-item>
+                    <a
+                      href="javascript:;"
+                      @click="logout"
+                    >退出</a>
+                  </a-menu-item>
+                </a-menu>
+              </a-dropdown>
+            </div>
+          </a-col>
+        </a-row>
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+import AIapply from './AIablity.vue'
+import { mapState } from 'vuex'
+export default {
+  data () {
+    return {
+      abilityDropdown: false,
+      Nab: [
+        {
+          name: 'AI应用'
+        }
+      ],
+      AIuse: []
+    }
+  },
+  created () {
+    if (!this.Cookies.getJSON('userInfoAI')) {
+      this.$store.commit('changeUserData')
+    }
+    this.$api.home.getAbility(1).then(res => {
+      if (res.code === 200) {
+        this.AIuse = res.data
+      } else {
+        this.AIuse = []
+      }
+      this.$emit('setAbilityData', this.AIuse)
+    })
+  },
+  computed: {
+    ...mapState({
+      totalCount (state) {
+        if (state.messageInfo) {
+          const { messageCount, orderCount } = state.messageInfo
+          return messageCount + orderCount
+        }
+        return 0
+      }
+    })
+  },
+  methods: {
+    goTo (name) {
+      this.$router.push({ name })
+    },
+    back () {
+      this.$router.push('/')
+    },
+    handleMenuClick (e) {
+      this.abilityDropdown = false
+    },
+    userProfile () {
+      this.$router.push({ name: 'userProfile' })
+    },
+    orderCenter () {
+      this.$router.push({ name: 'orderCenter' })
+    },
+    toControl () {
+      if (!this.Cookies.getJSON('userInfoAI')) {
+        this.$router.push({
+          path: '/login',
+          query: {
+            type: 'control'
+          }
+        })
+      } else {
+        this.$store.commit('changeActive', 0)
+        this.$router.push({ path: '/control' })
+      }
+    },
+    toLogin () {
+      this.$router.push({ path: '/login' })
+    },
+    logout () {
+      this.$api.newLogin.logOut().then(response => {
+        if (response.code !== 200) {
+          this.$message.error(response.msg)
+        } else {
+          this.Cookies.remove('userInfoAI')
+          this.$store.commit('changeUserData', null)
+          this.$router.push('/login')
+        }
+      })
+    },
+    goToSolution (path) {
+      this.$router.push(path)
+    }
+  },
+  components: {
+    AIapply
+  }
+}
+</script>
+<style lang="less" scoped>
+@import "./Header.less";
+</style>
+.auto-header{
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 23;
+  width: 100%;
+  min-width: 1200px;
+  .auto-header-body{
+    background-color: transparent;
+  }
+    .header-top{
+      padding: 0px 60px;
+      height: 60px;
+      line-height: 60px;
+      font-family:microsoft yagh;
+      font-size: 14px;
+      font-weight:500;
+      color:#fff;
+      .logo-box{
+        display: flex;
+        align-items: center;
+        img{
+          margin-right: 10px;
+          vertical-align: middle;
+          width: 32px;
+          height: 32px;
+          cursor: pointer;
+        }
+        span{
+          font-size: 19px;
+          font-weight: 500;
+          cursor: pointer;
+        }
+      }
+      .top-nav{
+        text-align: left;
+        span{
+          margin-right: 45px;
+          cursor: pointer;
+        }
+        .active{
+          border-bottom: 1px solid #fff;
+        }
+        a, a:hover{
+          color: #fff;
+        }
+        .router-link-exact-active, .router-link-active{
+          position: relative;
+          border-bottom: 1px solid #fff;
+        }
+      }
+      .top-right{
+        text-align: right;
+        span{
+          cursor: pointer;
+        }
+        .login{
+          margin-left: 20px;
+          text-decoration: none;
+          &:hover{
+            color: #19FFE0;
+          }
+        }
+        .message{
+          margin-right: 20px;
+          .icon-message{
+            font-size: 20px;
+            position: relative;
+            top:3px;
+          }
+        }
+      }
+    }
+ }
+ .username{
+  padding:0 10px;
+}
+.control{
+  margin-right: 20px;
+}
+<template>
+  <div class="menuContent">
+    <div class="title">
+      <span>文档目录</span>
+    </div>
+    <a-menu
+      :defaultSelectedKeys="defaultSelectedKeys"
+      :openKeys.sync="openKeys"
+      v-model="selectedKeys"
+      mode="inline"
+      light
+    >
+      <a-sub-menu
+        v-for="items in menuList"
+        :key="String(items.id)"
+      >
+        <span slot="title">
+          <span>{{items.name}}</span>
+        </span>
+        <a-menu-item
+          v-for="i in items.children"
+          :key="String(i.id)"
+          @click="handleClick( i.id, items.id)"
+        >{{i.name}}</a-menu-item>
+      </a-sub-menu>
+    </a-menu>
+  </div>
+</template>
+<script>
+import { documentPages } from '@/utils/helper'
+export default {
+  data () {
+    const { id } = this.$route.query
+    return {
+      openKeys: ['quickGuide'],
+      selectedKeys: [String(id)],
+      defaultSelectedKeys: [String(id)],
+      navigationid: 1,
+      menuList: [
+        {
+          id: 'quickGuide',
+          name: '快速指南',
+          children: [
+            {
+              id: 'AI-access-guide',
+              name: 'AI接入指南'
+            },
+            {
+              id: 'AI-authentication',
+              name: '鉴权认证'
+            },
+            {
+              id: 'general-value-return',
+              name: '通用值返回'
+            },
+            {
+              id: 'FAQ',
+              name: '常见问题'
+            }
+          ]
+        },
+        {
+          id: 'agreement-desc',
+          name: '协议说明',
+          children: [
+            {
+              id: 'service-agreement',
+              name: '服务协议'
+            },
+            {
+              id: 'privacy-agreement',
+              name: '隐私协议'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  methods: {
+    handleClick (id, parent) {
+      let name = id
+      if (typeof id === 'number') {
+        name = 'generalDocument'
+      }
+      this.$router.push({ name, query: { parent, id } })
+      document.querySelector('.content').scrollTo(0, 0)
+    },
+    getPageName (id) {
+      return documentPages[id]
+    },
+    getDocumentsList () {
+      this.$api.documentManagement.getDocumentsList()
+        .then(res => {
+          if (res.code === 200) {
+            if (res.data.length > 0) {
+              this.menuList = [...this.menuList, ...res.data]
+            }
+          }
+        })
+    }
+  },
+  created () {
+    if (this.$route.query.parent) {
+      this.openKeys = [String(this.$route.query.parent)]
+    }
+    this.getDocumentsList()
+  },
+  watch: {
+    $route (to, from) {
+      if (!this.openKeys.includes(String(to.query.parent))) {
+        this.openKeys = [String(to.query.parent)]
+      }
+      this.selectedKeys = [String(to.query.id)]
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+.menuContent {
+  background-color: #fff;
+  .title {
+    width: 85%;
+    margin: 0 auto;
+    vertical-align: center;
+    line-height: 50px;
+    position: relative;
+    border-bottom: 1px solid#F2F5F8;
+    color: #383838;
+    font-size: 14px;
+    font-weight: bold;
+    .menuIcon {
+      margin: 0 0 0 auto;
+      position: absolute;
+      right: 0;
+      top: 18px;
+      padding: 0;
+    }
+  }
+  /deep/.ant-menu-inline .ant-menu-submenu-title {
+    font-size: 12px;
+    line-height: 36px;
+    height: 36px;
+  }
+  /deep/.ant-menu-inline .ant-menu-item {
+    font-size: 12px;
+    line-height: 30px;
+    height: 30px;
+  }
+  .ant-menu-item-selected {
+    color: #289ffe;
+  }
+  .ant-menu-item-disabled {
+    cursor: default;
+  }
+  .ant-menu-inline {
+    border: none;
+  }
+}
+</style>
+<template>
+  <a-menu
+    class="auto-menu"
+    :defaultSelectedKeys="defaultSelectedKeys"
+    @click="handleClick"
+    :openKeys.sync="openKeys"
+    mode="inline"
+    light
+  >
+    <a-sub-menu v-for="items in menuList" @titleClick="titleClick" :key="items.ParentMenuKey">
+      <span slot="title">
+        <span>{{items.ParentMenuValue}}</span>
+      </span>
+      <a-menu-item v-for="i in items.subMenuList" :key="i.subMenuKey">{{i.subMenuValue}}</a-menu-item>
+    </a-sub-menu>
+  </a-menu>
+</template>
+<script>
+export default {
+  name: 'deepblueMenu',
+  data () {
+    const { path } = this.$route
+    const pathList = path.split('/')
+    let defaultPath = []
+    if (pathList.length > 0 && !pathList[0] && pathList[1]) {
+      defaultPath = [`/${pathList[1]}`]
+    }
+    return {
+      defaultSelectedKeys: defaultPath,
+      openKeys: ['model-center', 'data-center'],
+      menuList: [
+        {
+          ParentMenuKey: 'model-center',
+          ParentMenuValue: '模型中心',
+          subMenuList: [
+            {
+              subMenuKey: '/model-list',
+              subMenuValue: '模型列表'
+            },
+            {
+              subMenuKey: '/train',
+              subMenuValue: '训练模型'
+            },
+            {
+              subMenuKey: '/check',
+              subMenuValue: '校验模型'
+            },
+            {
+              subMenuKey: '/public',
+              subMenuValue: '发布模型'
+            }
+          ]
+        },
+        {
+          ParentMenuKey: 'data-center',
+          ParentMenuValue: '数据中心',
+          subMenuList: [
+            {
+              subMenuKey: '/my-data',
+              subMenuValue: '我的数据集'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  methods: {
+    goto () {
+      this.$router.push({ path: 'home' })
+    },
+    handleClick (e) {
+      this.$router.push({ path: e.key })
+    },
+    titleClick (e) {
+    }
+  },
+  watch: {
+    openKeys (val) {
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+ @prefixCls: auto-menu;
+ .@{prefixCls} {
+  width: 200px;
+  min-height: 700px;
+  border-right:none;
+  .ant-menu-item{
+    font-size: 12px;
+    border-left: 4px solid transparent;
+  }
+  .ant-menu-inline .ant-menu-item{
+    overflow: visible;
+    &::after{
+      border-right:none;
+    }
+  }
+  .ant-menu-item-selected{
+    background-color:#f4f4f4;
+    color: #0679E5;
+    font-weight:500;
+    position: relative;
+    border-left:4px solid #0679E5;
+    box-sizing: border-box;
+  }
+ }
+ </style>
+import Vue from 'vue'
+import Vuex from 'vuex'
+import Cookies from 'js-cookie'
+Vue.use(Vuex)
+const userInfo = Cookies.getJSON('userInfoAI')
+const messageInfo = JSON.parse(sessionStorage.getItem('message-total'))
+const empty = {
+  messageCount: 0,
+  orderCount: 0
+}
+const state = {
+  userInfo,
+  tabNumber: null,
+  breadcrumb: [],
+  messageInfo: messageInfo || empty
+}
+const mutations = {
+  changeUserData (state, items) {
+    state.userInfo = items
+  },
+  changeActive (state, index) {
+    state.tabNumber = index
+  },
+  changeBreadCrumb (state, breadcrumb) {
+    state.breadcrumb = breadcrumb
+  },
+  changeMessage (state, items) {
+    state.messageInfo = Object.assign({}, state.messageInfo, items)
+  }
+}
+const actions = {
+  changeUserData (context, param) {
+    context.commit('changeUserData', param)
+  },
+  changeBreadCrumb (context, param) {
+    context.commit('changeBreadCrumb', param)
+  },
+  changeMessageInfo (context, param) {
+    context.commit('changeMessage', param)
+  }
+}
+export default new Vuex.Store({
+  state,
+  mutations,
+  actions
+})
+<template>
+  <div class="ApplyForTrial">
+    <div class="top"></div>
+    <div class="header">
+      <div class="bgimg"></div>
+      <div class="header-inner">
+        <div class="title">试用申请</div>
+        <div class="desc">
+          请详细描述您的需求<br />我们会尽快与您取得联系，为您开通试用权限
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <div class="goBack" @click="goback">
+        <i class="iconfont icon-shuangjiantou-you1"></i>
+        <span>返回</span>
+      </div>
+      <div class="consultList">
+        <a-form-model
+          ref="form"
+          :model="form"
+          :label-col="labelCol"
+          :wrapper-col="wrapperCol"
+          :rules="rules"
+        >
+          <a-form-model-item :colon="false" labelAlign="left" prop="ability">
+            <template slot="label">
+              <span class="left-label-tit">试用业务</span>
+            </template>
+            <a-select v-model="form.ability" placeholder="请选择试用业务" :getPopupContainer="triggerNode => triggerNode.parentNode">
+              <a-select-option
+                v-for="(item, index) in businessOptions"
+                :key="index"
+                :value="item.id"
+                >{{ item.name }}</a-select-option
+              >
+            </a-select>
+          </a-form-model-item>
+          <a-form-model-item
+            :colon="false"
+            labelAlign="left"
+            prop="description"
+          >
+            <template slot="label">
+              <span class="left-label-tit">需求描述</span>
+            </template>
+            <a-textarea
+              v-model="form.description"
+              :rows="6"
+              placeholder="请具体描述您的具体业务需求"
+            />
+          </a-form-model-item>
+                    <a-form-model-item :colon="false" labelAlign="left" prop="devType">
+            <template slot="label">
+              <span class="left-label-tit">用户类型</span>
+            </template>
+           <a-radio-group v-model="form.devType" @change="devTypeChange">
+              <a-radio :value="2"> 企业 </a-radio>
+              <a-radio :value="1"> 个人 </a-radio>
+            </a-radio-group>
+          </a-form-model-item>
+                    <a-form-model-item v-if="form.devType==2" :colon="false" labelAlign="left" prop="company">
+            <template slot="label">
+              <span class="left-label-tit">企业名称</span>
+            </template>
+            <a-input v-model="form.company" placeholder="请输入企业名称" />
+          </a-form-model-item>
+                    <a-form-model-item v-if="form.devType==2" :colon="false" labelAlign="left" prop="industry">
+            <template slot="label">
+              <span class="left-label-tit">所属行业</span>
+            </template>
+            <a-select v-model="form.industry" placeholder="请选择所属行业" :getPopupContainer="triggerNode => triggerNode.parentNode">
+              <a-select-option
+                v-for="(item, index) in industryOptions"
+                :key="index"
+                :value="item.dicValue"
+                >{{ item.dicValue }}</a-select-option
+              >
+            </a-select>
+          </a-form-model-item>
+          <a-form-model-item
+            :colon="false"
+            labelAlign="left"
+            prop="contactName"
+          >
+            <template slot="label">
+              <span class="left-label-tit">联系人姓名</span>
+            </template>
+            <a-input
+              v-model="form.contactName"
+              placeholder="请输入联系人姓名"
+            />
+          </a-form-model-item>
+          <a-form-model-item
+            :colon="false"
+            labelAlign="left"
+            prop="contactPhone"
+          >
+            <template slot="label">
+              <span class="left-label-tit">联系人电话</span>
+            </template>
+            <a-input
+              v-model="form.contactPhone"
+              placeholder="请输入联系人电话"
+            />
+          </a-form-model-item>
+          <a-form-model-item
+            :colon="false"
+            labelAlign="left"
+            prop="contactEmail"
+          >
+            <template slot="label">
+              <span class="left-label-tit">联系人邮箱</span>
+            </template>
+            <a-input
+              v-model="form.contactEmail"
+              placeholder="请输入联系人邮箱"
+            />
+          </a-form-model-item>
+          <a-form-model-item :wrapper-col="{ span: 5, offset: 19 }">
+            <a-button
+              type="primary"
+              :loading="isSubmitting"
+              @click="onSubmit('form')"
+            >
+              确认提交
+            </a-button>
+          </a-form-model-item>
+        </a-form-model>
+      </div>
+    </div>
+    <div class="mask" v-if="showSubmitMessage">
+      <div class="submitResultMessage">
+        <div class="tit">提交成功</div>
+        <div class="content">
+          <span class="text">
+            提交成功 <span> <i class="iconfont icon-duihao1"></i></span>
+            <br />申请结果会以短信和邮件的形式<br />通知给您，请耐心等待
+          </span>
+          <a-button type="default" @click="submitSuccessfully">
+            确认 ({{ seconds }}s)
+          </a-button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+export default {
+  data: function () {
+    const noempty = (rule, value, callback) => {
+      if (!value) {
+        return callback(new Error('必填字段'))
+      }
+      callback()
+    }
+    const validateTel = (rule, value, callback) => {
+      if (!value) {
+        return callback(new Error('必填字段'))
+      }
+      if (!/^1\d{10}$/.test(value)) {
+        return callback(new Error('请输入正确的联系人电话'))
+      }
+      callback()
+    }
+    const validateEmail = (rule, value, callback) => {
+      if (!value) {
+        return callback(new Error('必填字段'))
+      }
+      if (!/^[\w'.%+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,4}$/.test(value)) {
+        return callback(new Error('请输入正确的联系人邮箱'))
+      }
+      callback()
+    }
+    return {
+      labelCol: { span: 6 },
+      wrapperCol: { span: 18 },
+      form: {
+        ability: undefined,
+        description: '',
+        company: '',
+        industry: undefined,
+        contactName: '',
+        contactPhone: '',
+        contactEmail: '',
+        state: 0,
+        devType: 2
+      },
+      userInfo: {},
+      businessOptions: [],
+      industryOptions: [],
+      rules: {
+        business: [
+          {
+            validator: noempty,
+            trigger: 'change'
+          }
+        ],
+        description: [
+          {
+            validator: noempty,
+            trigger: 'blur'
+          },
+          { max: 500, message: '请将字数控制在 500 字符内', trigger: 'blur' }
+        ],
+        company: [
+          {
+            validator: noempty,
+            trigger: 'blur'
+          },
+          { max: 50, message: '请将字数控制在 50 字符内', trigger: 'blur' }
+        ],
+        industry: [
+          {
+            validator: noempty,
+            trigger: 'change'
+          }
+        ],
+        contactName: [
+          {
+            validator: noempty,
+            trigger: 'blur'
+          },
+          { max: 50, message: '请将字数控制在 50 字符内', trigger: 'blur' }
+        ],
+        contactPhone: [
+          {
+            validator: validateTel,
+            trigger: ['blur']
+          }
+        ],
+        contactEmail: [
+          {
+            validator: validateEmail,
+            trigger: 'blur'
+          },
+          { max: 50, message: '请将字数控制在 50 字符内', trigger: 'blur' }
+        ]
+      },
+      showSubmitMessage: false,
+      seconds: 0,
+      timer: undefined,
+      isSubmitting: false,
+      caseIdbackToPage: {
+        1: 'demoVideo',
+        13: 'demoVideo',
+        80: 'demoVideo'
+      }
+    }
+  },
+  created () {
+    sessionStorage.setItem(
+      'needApply',
+      JSON.stringify(this.$route.query.needApply)
+    )
+    this.$api.home
+      .getNeedApply()
+      .then((res) => {
+        if (res.code === 200) {
+          this.businessOptions = res.data
+        } else {
+          this.$message.error(res.msg)
+        }
+      })
+      .then(() => {
+        this.form.ability = +this.$route.query.caseId
+      })
+          this.$api.home
+      .consultingDictionaryQuery({ key: 'industry' })
+      .then((res) => {
+        if (res.code === 200) {
+          this.industryOptions = res.data
+        } else {
+          this.$message.error(res.msg)
+        }
+      })
+      .catch((error) => this.$message.error(error))
+  },
+  mounted () {
+    this.$api.userProfile.userInfo().then((res) => {
+      if (res.code === 200) {
+        this.userInfo = res.data
+        this.form.company = res.data.companyName ? res.data.companyName : ''
+        this.form.industry = res.data.industryCN ? res.data.industryCN : ''
+        this.form.contactName = res.data.fullName ? res.data.fullName : ''
+        this.form.contactPhone = res.data.phoneNumber
+          ? res.data.phoneNumber
+          : ''
+        this.form.contactEmail = res.data.email ? res.data.email : ''
+      } else {
+        this.$message.error(res.msg)
+      }
+    })
+  },
+  methods: {
+    goback () {
+      const url = this.caseIdbackToPage[this.$route.query.caseId]
+      this.$router.push({
+        name: url,
+        params: { id: this.$route.query.caseId },
+        query: { needApply: this.$route.query.caseId }
+      })
+    },
+    onSubmit (formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          this.sendInfor()
+            .then((isSuccess) => {
+              if (isSuccess) {
+                this.showSubmitMessage = true
+                this.countTime(3)
+              }
+            })
+            .catch((error) => this.$message.error(error))
+            .finally(() => {
+              this.isSubmitting = false
+            })
+        } else {
+          return false
+        }
+      })
+    },
+    countTime (seconds = 3) {
+      this.seconds = seconds
+      this.timer = setInterval(() => {
+        this.seconds--
+        if (this.seconds <= 0) {
+          clearInterval(this.timer)
+          this.seconds = 0
+          this.showSubmitMessage = false
+          this.goback()
+        }
+      }, 1000)
+    },
+    submitSuccessfully () {
+      this.goback()
+      clearInterval(this.timer)
+    },
+    sendInfor () {
+      console.log(this.form)
+      this.isSubmitting = true
+      return this.$api.home.applySave(this.form).then((res) => {
+        if (res.code === 200) {
+          return true
+        } else {
+          this.$message.error(res.msg)
+          return false
+        }
+      })
+    },
+    devTypeChange (e) {
+      if (e.target.value === 1) {
+        this.form.company = '-'
+        this.form.industry = '-'
+      } else {
+        this.form.company = this.userInfo.companyName ? this.userInfo.companyName : ''
+        this.form.industry = this.userInfo.industryCN ? this.userInfo.industryCN : ''
+      }
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+@import "./ApplyForTrial.less";
+</style>
+.ApplyForTrial {
+    font-family: Source Han Sans CN Regular, Source Han Sans CN Regular-Regular;
+    .top {
+      margin-top: 60px;
+    }
+    .header {
+      width: 100%;
+      height: 350px;
+      position: relative;
+      z-index: -2;
+      background-color: #000;
+      border: 1px solid #000000;
+      .bgimg {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-image: url("../../../assets/img/ApplyForTrial-header-bg.jpg");
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: bottom;
+        opacity: 0.66;
+        z-index: -1;
+      }
+      .header-inner {
+        width: 700px;
+        height: 478px;
+        margin-left: 114px;
+        .title {
+          margin-top: 106px;
+          font-size: 48px;
+          font-weight: 400;
+          text-align: left;
+          color: #ffffff;
+          letter-spacing: 1px;
+        }
+        .desc {
+          margin-top: 28px;
+          font-size: 16px;
+          font-weight: 400;
+          text-align: left;
+          color: #ffffff;
+          line-height: 24px;
+          letter-spacing: 0px;
+        }
+      }
+    }
+<script>
+import basicTemplate from '@/components/page/basicTemplate'
+import TableRecognition from './components/TableRecognition'
+export default {
+  components: {
+    basicTemplate,
+    TableRecognition
+  },
+  data () {
+    return {
+      rectVisible: false,
+      PageData: []
+    }
+  },
+  mounted () {
+  },
+  methods: {
+    async updateRect (res, imgUrl) {
+      this.rectVisible = false
+      this.curSelected = 0
+      if (res.code === 200) {
+        this.rectVisible = true
+      }
+    },
+    download () {
+      console.log('下载')
+    },
+    lookDetail () {
+      console.log('chak')
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+.table-recognition{
+  .btns-bottom{
+    width: calc(~ "100% - 20px");
+    height:50px;
+    background-color: #fff;
+    position: absolute;
+    bottom: 0;
+    padding-top: 10px;
+    text-align: right;
+    .btn{
+      margin-right: 10px;
+    }
+  }
+}
+</style>
+<template>
+  <div class="normal-template">
+    <Spin v-if="loading"/>
+    <ErrorPage v-else-if='errFlag' @left='refresh' @right='goHome'/>
+    <div class="outer-container" v-else>
+      <div class="goback" @click="goback"><a-icon type="left" />返回</div>
+      <Card :cardInfo="abilityInfo.cardInfo"></Card>
+      <h3 class="title">功能体验</h3>
+      <Functional
+        :uploadOption="uploadOptions"
+        :beforeUpload="beforeUpload"
+        :imagesDataList="imagesDataList"
+        :imgUploading="imgUploading"
+        :currentIndex.sync='currentIndex'
+        @onFileChange="onFileChange"
+        @clickUpload='clickUpload'
+        ref='animation'
+      ></Functional>
+      <h3 class="title">应用场景</h3>
+      <ApplyScene :caseList="abilityInfo.sceneList"></ApplyScene>
+    </div>
+    <Footer/>
+  </div>
+</template>
+<script>
+import Card from '@/components/page/Card'
+import Functional from '@/components/page/Functional'
+import ApplyScene from '@/components/page/ApplyScene'
+import { getObjectURL, NormalUploadUrl, getBase64Url, getBase64 } from '@/utils/helper'
+import Spin from '@/components/Spin.vue'
+import Footer from '@/components/Footer.vue'
+import ErrorPage from '@/components/page/Error'
+import { abilityAwait } from '@/constants/abiliteStatic.js'
+export default {
+  components: {
+    Spin,
+    Card,
+    Functional,
+    ApplyScene,
+    ErrorPage,
+    Footer
+  },
+  data () {
+    return {
+      abilityInfo: {},
+      imagesDataList: [],
+      fileObj: {},
+      imgUploading: false,
+      currentIndex: 0,
+      initLen: 0,
+      loading: false,
+      visible: false,
+      errFlag: false,
+      tryFlag: false,
+      fileListLen: 0
+    }
+  },
+  computed: {
+    uploadOptions () {
+      return {
+        action: NormalUploadUrl[this.$route.params.id],
+        name: 'imgFile',
+        accept: 'image/*',
+        disabled: this.tryFlag
+      }
+    }
+  },
+  watch: {
+    '$route' (to, from) {
+      if (this.$route.params.id) {
+        this.getTemplateData(this.$route.params.id)
+      }
+    }
+  },
+  created () {
+    this.getTemplateData(this.$route.params.id)
+  },
+  methods: {
+    getTemplateData (id) {
+      this.loading = true
+      this.$api.AIdetails.getOcrTemplateData(id).then(res => {
+        this.loading = false
+        if (res.code === 200) {
+          this.errFlag = false
+          const { status } = res.data
+          const cardInfo = {
+            imgUrl: res.data && res.data.responseCoverUrl,
+            title: res.data && res.data.name,
+            labels: res.data && res.data.scene,
+            content: res.data && res.data.description,
+            times: res.data && res.data.times
+          }
+          this.tryFlag = status && status === 2
+          this.abilityInfo = {
+            cardInfo,
+            sceneList: res.data && res.data.sceneList
+          }
+          const len = 0
+          this.currentIndex = len
+          if (status && status === 2) {
+            this.imagesDataList = abilityAwait[id]
+            return
+          }
+          let { url, hdfsBaseUrl } = res.data && res.data
+          url = url && url.split(',||,')
+          const array = url ? url.map(item => {
+            return {
+              imgUrl: `${hdfsBaseUrl}${item}`
+            }
+          }) : []
+          this.imagesDataList = array
+          const demoUrl = array[len].imgUrl
+          this.initLen = array.length - 1
+          this.uploadUrlFile({ url: demoUrl, len: 0 })
+        } else {
+          this.errFlag = true
+          this.$message.error(res.msg)
+        }
+      }).catch(() => {
+        this.errFlag = true
+        this.loading = false
+      })
+    },
+    uploadUrlFile ({ url, len }) {
+      this.imgUploading = true
+      getBase64Url(url, (data) => {
+        const bas464 = data.split('base64,')[1]
+        this.handerRes(bas464, len)
+      })
+    },
+    goback () {
+      this.$router.go(-1)
+    },
+    onFileChange ({ fileList }) {
+      this.fileListLen = fileList.length
+    },
+    beforeUpload (file) {
+      this.imgUploading = true
+      const imageTypeList = [
+        'image/jpeg',
+        'image/png',
+        'image/jpg',
+        'image/bmp',
+        'image/svg',
+        'image/webp'
+      ]
+      const isJPG = imageTypeList.indexOf(file.type) !== -1
+      const url = getObjectURL(file)
+      this.$set(this.fileObj, 'imgUrl', url)
+      if (!isJPG) {
+        this.$message.error('只图片支持的格式为PNG、JPG、JPEG、BMP等!')
+        this.imgUploading = false
+        return false
+      }
+      const isLt4M = file.size / 1024 / 1024 < 4
+      if (!isLt4M) {
+        this.$message.error('图片大小请限制在4M以内!')
+        this.imgUploading = false
+        return false
+      }
+      this.$set(this.imagesDataList, this.imagesDataList.length, { ...this.fileObj })
+      getBase64(file, (res) => {
+        const bas464 = res.split('base64,')[1]
+        this.handerRes(bas464, null, true)
+      })
+      return false
+    },
+    clickUpload (params) {
+      this.uploadUrlFile(params)
+    },
+    refresh () {
+      this.getTemplateData(this.$route.params.id)
+    },
+    goHome () {
+      this.$router.push({
+        name: 'home'
+      })
+    },
+    handerRes (bas464, len, isBtn = false) {
+      this.$refs.animation && this.$refs.animation.resetCss()
+      this.$api.AIdetails.abilityResult(this.uploadOptions.action, {
+        image: bas464
+      }).then(res => {
+        this.imgUploading = false
+        if (res.code === 200) {
+          this.$set(this.imagesDataList, isBtn ? this.fileListLen + this.initLen : len, isBtn ? { ...this.fileObj, ...res.data, resJson: res } : { ...this.imagesDataList[len], ...res.data, resJson: res })
+          isBtn && (this.currentIndex = this.imagesDataList.length - 1)
+          this.$refs.animation.animation()
+        } else {
+          this.$set(this.fileObj, 'resJson', res)
+          this.$set(this.imagesDataList, isBtn ? this.fileListLen + this.initLen : len, isBtn ? { ...this.fileObj } : { ...this.imagesDataList[len], ...res.data, resJson: res })
+          isBtn && (this.currentIndex = this.imagesDataList.length - 1)
+          if (res && res.msg) {
+            this.$message.error(res.msg)
+          } else if (res && !res.msg) {
+            this.$message.error(res)
+          }
+        }
+      }).catch((err) => {
+        this.imgUploading = false
+        if (err) {
+          const { data } = err
+          if (data && data.message) this.$message.error(data.message)
+        }
+      })
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+.normal-template{
+  height: calc(100% - 60px);
+  margin-top: 60px;
+  .outer-container{
+    padding-bottom: 20px;
+    width: 1200px;
+    margin: auto;
+    .goback{
+      height: 60px;
+      width: 80px;
+      line-height: 60px;
+      cursor: pointer;
+    }
+    .title{
+      border-top: 1px solid #b4b4b4;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      padding-top: 20px;
+      color: #3c3c3c;
+    }
+  }
+    .video-demo{
+    position: absolute;
+    top: -1px;
+    left: 92px;
+    height: 20px;
+    font-size: 12px;
+    border-radius: 4px;
+    padding: 0 10px;
+    cursor: pointer;
+    background: rgba(255,255,255,.5);
+    span{
+      display: inline-block;
+      height: 20px;
+      line-height: 20px;
+      margin-left: 5px;
+    }
+    .iconfont{
+      font-size: 15px;
+    }
+  }
+  }
+</style>
+<template>
+    <div class="details">
+      <div class="breadcrumb">
+        <span @click="goMyApply" class="myapply">我的应用</span><span>> {{applicationName}}</span>
+      </div>
+      <div class="btn-box">
+        <a-button type="primary" @click="editTo">编辑</a-button>
+        <a-button @click="deleteApply">删除</a-button>
+      </div>
+      <div class="information">
+        <span class="line"></span>
+        <span>应用名称：{{applicationName}}</span>
+        <span>应用类型：{{applicationTypeCN}}</span>
+      </div>
+      <div class="information">
+        <span class="line"></span>
+        <span class="descriptionName">应用描述：</span><span class="description">{{description}}</span>
+      </div>
+      <div class="information">
+        <span class="line"></span>
+        <span>已接入能力</span>
+        <a-table :columns="ablityColumns" :dataSource="AbilityData" :pagination="false" :loading="tableAbilityLoading">
+          <div slot="apiStateCN" slot-scope="text" class="apiStatus">
+            <span class="circle"></span>
+            <span>{{text}}</span>
+          </div>
+          <a slot="action" slot-scope="text, record" href="javascript:;" @click="getAndtoPage(record)">查看文档</a>
+        </a-table>
+      </div>
+    </div>
+</template>
+<script>
+const ablityColumns = [
+  { title: '序号', dataIndex: 'number', key: 'number' },
+  { title: '能力', dataIndex: 'abilityName', key: 'abilityName' },
+  { title: 'API', dataIndex: 'apiName', key: 'apiName' },
+  { title: '请求地址', dataIndex: 'apiAddress', key: 'apiAddress' },
+  { title: '免费调用限额', dataIndex: 'freeCallNum', key: 'freeCallNum' },
+  { title: 'QPS限额', dataIndex: 'qps', key: 'qps' },
+  { title: '接口状态', dataIndex: 'apiStateCN', key: 'apiStateCN', scopedSlots: { customRender: 'apiStateCN' } },
+  { title: '操作', dataIndex: 'action', key: 'action', scopedSlots: { customRender: 'action' } }
+]
+export default {
+  name: 'ApplyDetails',
+  data () {
+    const { applicationName, id } = this.$route.query
+    return {
+      applicationName,
+      id,
+      ablityColumns,
+      AbilityData: [],
+      tableAbilityLoading: true,
+      applicationTypeCN: '',
+      applicationType: '',
+      description: '',
+      apiList: []
+    }
+  },
+  created () {
+    this.$api.AIcontroller.getApplyDetails(this.id).then(res => {
+      if (res.code === 200) {
+        this.description = res.data.description
+        this.applicationTypeCN = res.data.applicationTypeCN
+        this.applicationType = res.data.applicationType
+        this.apiList = res.data.apiList
+      } else {
+        this.$message.error(res.msg)
+      }
+    })
+    this.$api.AIcontroller.getApiList(this.id).then(res => {
+      if (res.code === 200) {
+        this.tableAbilityLoading = false
+        if (res.data.length > 0) {
+          console.log(res.data)
+          this.AbilityData = res.data.map((item, index) => {
+            item.key = item.number = Number(index + 1)
+            return {
+              ...item
+            }
+          })
+        }
+      } else {
+        this.$message.error(res.msg)
+      }
+    })
+  },
+  methods: {
+    deleteApply () {
+      this.$confirm({
+        title: '确认要删除本应用？',
+        okText: '确定',
+        cancelText: '取消',
+        centered: true,
+        getContainer: this.getContainer,
+        icon: 'info-circle',
+        onOk: () => {
+          this.deleteApplyDetail(this.id)
+        },
+        class: 'test'
+      })
+    },
+    deleteApplyDetail (id) {
+      this.$api.AIcontroller.deleteApply(id).then(res => {
+        if (res.code === 200) {
+          this.$router.push({ name: 'MyApply' })
+        } else {
+          this.$message.error(res.msg)
+        }
+      })
+    },
+    goMyApply () {
+      this.$router.push({ name: 'MyApply' })
+    },
+    editTo () {
+      this.$router.push({
+        name: 'ApplyEdit',
+        query: { applicationName: this.applicationName, id: this.id, applicationType: this.applicationType, apiList: this.apiList, description: this.description }
+      })
+    },
+    getContainer () {
+      return document.getElementsByClassName('details')[0]
+    },
+    getAndtoPage (record) {
+      console.log(record, 'record')
+      this.$router.push({ name: record.docAddress, query: { parent: record.params } })
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+.btn-box{
+  padding: 10px 50px;
+  .ant-btn{
+    margin-right: 15px;
+    width: 100px;
+  }
+}
+.information{
+  padding: 10px 50px 20px;
+  font-family:Source Han Sans CN;
+  font-size: 14px;
+  color: #474747;
+  .line{
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: middle;
+    width: 4px;
+    height: 16px;
+    background-color: #23A3FF;
+  }
+  span{
+    margin-right: 50px;
+    font-size: 14px;
+  }
+  .description{
+    color: rgba(71, 71, 71, .6)
+  }
+  .descriptionName{
+    margin-right: 0px;
+  }
+  .apiStatus{
+    span{
+      font-size: 12px;
+    }
+    .circle{
+      margin-right: 5px;
+      display: inline-block;
+      vertical-align: middle;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: #54C54E;
+      box-shadow: 0px 0px 0px 3px rgba(84,197,78, .25);
+    }
+  }
+}
+/deep/ .auto-breadcrumb .ant-breadcrumb{
+  padding-left: 50px;
+  height: 60px;
+  line-height: 60px;
+}
+/deep/ .ant-table-wrapper {
+  margin-top: 20px;
+}
+.breadcrumb{
+  padding-left: 50px;
+  height: 60px;
+  line-height: 60px;
+  border-bottom: 1px solid #F0F0F0;
+  span{
+    color: #474747;
+    font-size:14px;
+    font-family:Source Han Sans CN;
+  }
+  .myapply{
+    cursor: pointer;
+  }
+}
+/deep/ .ant-modal-wrap{
+  .ant-modal-confirm-body{
+    .ant-modal-confirm-title {
+      padding-top: 2px;
+      font-size: 14px;
+    }
+  }
+}
+</style>
+ 
