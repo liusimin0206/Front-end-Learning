@@ -2,7 +2,7 @@
  * @Author: liusimin
  * @Date: 2021-04-12 15:02:53
  * @LastEditors: your name
- * @LastEditTime: 2021-04-13 14:24:02
+ * @LastEditTime: 2021-04-14 16:11:18
  * @Description: file content
  */
 
@@ -58,7 +58,7 @@ function autorun(update) {
     warppedUpdate()
 }
 
-let a2
+let dom
 autorun(() => {
-    a2 = obj.a
+    dom = obj.a
 })
