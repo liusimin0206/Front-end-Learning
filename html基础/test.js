@@ -1,3 +1,10 @@
+/*
+ * @Author: liusimin
+ * @Date: 2021-04-09 12:19:02
+ * @LastEditors: your name
+ * @LastEditTime: 2021-04-23 17:38:16
+ * @Description: file content
+ */
 // 利用 WeakMap 解决循环引用
 let map = new WeakMap()
 function deepClone(obj) {
