@@ -1,0 +1,3263 @@
+<template>
+  <div class="taskpublish">
+    <Form ref="formInline" :model="formInline" :rules="ruleInline" :label-width="140">
+      <FormItem prop="name" label="任务名称：">
+        <Input v-model="formInline.name" placeholder="请输入任务名称" style="width: 542px"/>
+      </FormItem>
+      <FormItem prop="dataType" label="数据类型：">
+        <RadioGroup v-model="formInline.dataType" style="margin-right:20px;" type="button" @on-change="handleDatatypeChange">
+          <Radio :label="1">图片</Radio>
+          <Radio :label="2">文本</Radio>
+        </RadioGroup>
+      </FormItem>
+      <FormItem prop="taskType" label="任务类型：">
+        <RadioGroup v-model="formInline.taskType"  v-if="formInline.dataType === 1" style="margin-right:20px;" @on-change="handleTimeChangeTop" type="button">
+          <Radio :label="1" >图像检测</Radio>
+          <Radio :label="2" >图像分类</Radio>
+          <Radio :label="3" >图像分割</Radio>
+          <Radio :label="4" >点</Radio>
+          <Radio :label="5" >线</Radio>
+          <Radio :label="6" >OCR</Radio>
+        </RadioGroup>
+        <RadioGroup v-model="formInline.taskType" v-else style="margin-right:20px;" @on-change="handleTimeChangeTop" type="button">
+          <Radio :label="7">文本分类</Radio>
+          <Radio :label="8">序列标注</Radio>
+          <Radio :label="9">文本匹配</Radio>
+          <Radio :label="10">关系抽取</Radio>
+        </RadioGroup>
+      </FormItem>
+      <FormItem label="标注形式：" v-if='formInline.taskType === 4' class='ivu-form-item-required' >
+        <RadioGroup v-model="formInline.markStyle" class='mark-form' @on-change='changeMarkStyle'>
+          <Radio :label="41">点框组合</Radio>
+          <Radio :label="4">点</Radio>
+        </RadioGroup>
+      </FormItem>
+      <FormItem label="标注形式：" v-if='formInline.taskType === 7' class='ivu-form-item-required' prop="markStyle">
+        <Select v-model="formInline.markStyle" style="width:200px">
+          <Option :value="71">单标签</Option>
+          <Option :value="72">多标签</Option>
+        </Select>
+      </FormItem>
+      <FormItem prop="appId" label="应用领域：">
+        <Select v-model="formInline.appId" style="width: 542px" placeholder="请选择">
+          <Option v-for="(item,index) of ApplyList" :key="index" :value="item.id">{{item.name}}</Option>
+        </Select>
+      </FormItem>
+      <FormItem prop="description" label="应用描述：" class='ivu-form-item-required'>
+        <Input v-model="formInline.description" type="textarea" :rows="4" style="width: 542px"/>
+      </FormItem>
+      <FormItem prop="dataset" class="dataset ivu-form-item-required" label="数据集：">
+        <Input suffix="ios-search" @on-change="onInputChange" search placeholder="请输入关键词" style="width: 542px;margin-bottom:10px"/>
+          <CheckboxGroup v-model="formInline.dataset" @on-change="handleSelectData">
+            <Checkbox v-for="item in checkList" :label="item.id" :key="item.id" :value="item.id" style="margin-right: 33px; fontSize: 12px">{{item.name}}</Checkbox>
+          </CheckboxGroup>
+          <Table ref="selection" border height="200" width="542" :columns="datasetColumns" :data="checkList"></Table>
+      </FormItem>
+      <span class="uploadData" @click="uploadData">上传数据集</span>
+      <FormItem v-if="formInline.taskType === 2" prop="labelNames2" label="标签名称：" class="ivu-form-item-required">
+        <RadioGroup v-model="formInline.labelClassify" style="margin-right:20px;margin-bottom:15px;" @on-change="handleChangeLable" type="button">
+          <Radio :label="1" style="width: 140px;text-align:center;">手动输入</Radio>
+          <Radio :label="2" style="width: 140px;text-align:center;">上传文件</Radio>
+        </RadioGroup>
+        <div v-show="formInline.labelClassify === 1">
+          <Tag v-for="item in formInline.labelNames2" :key="item.name" :closable="!item.dsExistFlag" :name="item.name" @on-close="handleCloseTag">{{ item.name }}</Tag>
+          <i-input placeholder="请输入标签名称" v-model="newLabel" @on-blur="inputBlurs" v-if="inputVisible" style="width: 150px;" ref="addLabel" :maxlength="30"></i-input>
+          <Button type="dashed" size="small" @click="handleAdd" v-else>+  添加标签</Button>
+        </div>
+        <div v-show="formInline.labelClassify === 2">
+          <Upload
+          multiple
+          type="drag"
+          style="width: 542px; backgroundColor: #F6FBFF"
+          :format="acceptClassify"
+          :headers="headers"
+          action="/datamarker/task/label/upload"
+          :on-success="uploadClassifySuccess"
+          :on-error="uploadError"
+          :on-format-error="uploadFormatError"
+          :default-file-list="defaultFileList"
+          :max-size="maxClassifySize">
+          <div style="padding: 20px 0; height: 130px">
+              <span class="iconfont iconUpload" style="color: #3399ff; fontSize: 28px; marginLeft: 30px"></span>
+              <p class="uploadtips">点击选择文件或直接拖入文件上传支持小于2M的xlsx文件</p>
+              <p class="upload-template" @click.stop.prevent="downloadTemplate">下载导入模板</p>
+          </div>
+        </Upload>
+        </div>
+      </FormItem>
+        <div class="tag-wrap">
+          <Tag v-for="item in formInline.labelNames2" :key="item.name" :closable="!item.dsExistFlag" :name="item.name" @on-close="handleCloseTag">{{ item.name }}</Tag>
+          <i-input placeholder="请输入标签名称" v-model="newLabel" @on-keypress="inputKeypress" @on-blur="inputBlurs" v-if="inputVisible" style="width: 150px;" ref="addLabel" :maxlength="30"></i-input>
+          <Button size="small" type="dashed" @click="handleAdd" v-else>+  添加标签</Button>
+        </div>
+      </FormItem>
+      <FormItem v-else-if="formInline.taskType !== 9" prop="labelNames2" :label="formInline.taskType === 10 ? '实体标签：': '标签名称：'" :class='{ "ivu-form-item-required": formInline.taskType !== 6, "show-err": formInline.taskType === 6 }'>
+        <Tag v-for="item in formInline.labelNames2" :key="item.name" :closable="!item.dsExistFlag" :name="item.name" @on-close="handleCloseTag">{{ item.name }}</Tag>
+        <i-input placeholder="请输入标签名称" v-model="newLabel" @on-keypress="inputKeypress" @on-blur="inputBlurs" v-if="inputVisible" style="width: 150px;" ref="addLabel" :maxlength="30"></i-input>
+        <Button size="small" type="dashed" @click="handleAdd" v-else>+  添加标签</Button>
+        <Button type="dashed" size="small" style="display:block;margin-top:15px;" @click="handleBatchAdd(1)" v-if="formInline.dataType === 2">+  批量添加</Button>
+      </FormItem>
+      <FormItem v-if="formInline.taskType === 10" prop="relationshipLabels" label="关系标签：" :class='{ "ivu-form-item-required": formInline.taskType !== 6, "show-err": formInline.taskType === 6 }'>
+        <div  style="max-height: 175px;overflow-y:auto;width:600px">
+          <div class="relationshipLabelrow" v-for="(shipLabel,i) in formInline.relationshipLabels" :key="i">
+            <relation-label :shipLabel="shipLabel" :index="i" :relationshipLabels="formInline.relationshipLabels" :labelNames="formInline.labelNames2" @repeatValid="repeatValid" @changeLabelNum="changeLabelNum"></relation-label>
+          </div>
+        </div>
+         <Button type="dashed" size="small" style="display:block;margin-top:15px;" @click="handleBatchAdd(2)">+  批量添加</Button>
+      </FormItem>
+      <FormItem prop="datasetType" label="标注数据集格式：">
+      <Radio :value="!!formInline.exportFormat"  v-if='formInline.taskType === 2 || formInline.taskType === 3' disabled>{{ formInline.taskType === 2 ? '文件夹格式' : 'json格式'}}</Radio>
+        <Radio :value="!!formInline.exportFormat" v-else-if='formInline.taskType === 4 && formInline.markStyle === 41'>json格式</Radio>
+                  <Radio :label="3">txt格式</Radio>
+          <Radio :label="1" v-if='formInline.taskType === 1 || formInline.taskType === 6'>xml格式</Radio>
+          <Radio :label="2" v-if='formInline.taskType === 4 || formInline.taskType === 5 || formInline.taskType === 6'>json格式</Radio>
+        </RadioGroup>
+                <RadioGroup class='datasetType' v-model="formInline.exportFormat" style="margin-right:20px;" v-else>
+          <Radio :label="3">txt格式</Radio>
+          <Radio :label="1" v-if='formInline.taskType === 1 || formInline.taskType === 6'>xml格式</Radio>
+          <Radio :label="2" v-if='formInline.taskType === 4 || formInline.taskType === 5 || formInline.taskType === 6 ||formInline.taskType === 7'>json格式</Radio>
+          <Radio :label="6" v-if='formInline.taskType === 7 || formInline.taskType === 9'>csv格式</Radio>
+          <Radio :label="5" v-if='formInline.taskType === 8 || formInline.taskType === 10'>ann格式</Radio>
+        </RadioGroup>
+              </FormItem>
+      <FormItem prop="markerExplainUrl" label="标注说明：">
+        <Upload
+          type="drag"
+          style="width: 542px; backgroundColor: #F6FBFF"
+          :format="acceptArray"
+          :headers="headers"
+          action="/datamarker/task/explainfile/upload"
+          :on-success="uploadSuccess"
+          :on-error="uploadError"
+          :on-format-error="uploadFormatError"
+          :default-file-list="fileList"
+          :max-size="maxSize">
+          <div style="padding: 20px 0; height: 130px">
+            <span class="iconfont iconUpload" style="color: #3399ff; fontSize: 28px; marginLeft: 30px"></span>
+            <p class="uploadtips">点击上传文件</p>
+            <p class="uploadtips">或直接将文件拖入框中</p>
+          </div>
+        </Upload>
+        <p class="alreadyFiles" v-if="alreadyFilesName">{{alreadyFilesName}}<Icon type="md-close" @click="deleteFileName" class="close"/></p>
+        <p class="uploadtips">注：支持小于100M的PDF、Docx、Excel格式文件上传</p>
+      </FormItem>
+      <FormItem>
+        <Button type="primary" style="backgroundColor: #379AFF;" class="btn" :loading="loading" @click="handleSubmit('formInline')">发布</Button>
+        <Button style="margin-left: 30px" class="btn" @click="goBack">取消</Button>
+      </FormItem>
+    </Form>
+    <BatchUploadModal :batchUploadVisible.sync="batchUploadVisible" :uploadMode='uploadMode' @onOk="onOk" :taskType="formInline.taskType"></BatchUploadModal>
+  </div>
+</template>
+<script>
+import BatchUploadModal from './BatchUploadModal'
+import relationLabel from '@/components/relationLabel'
+export default {
+  name: 'publishTask',
+  components: {
+    BatchUploadModal,
+    relationLabel
+  },
+  data () {
+    const { taskId } = this.$route.query
+    const checkLabel = (rule, value, callback) => {
+      if (this.formInline.taskType !== 6 && (!value || !(value.length))) {
+        callback(new Error('请输入标签名称'))
+      } else {
+        callback()
+      }
+    }
+    return {
+      taskId,
+      formInline: {
+        name: '',
+        appId: null,
+        modelId: null,
+        taskType: 1,
+        dataType: 1,
+        labelClassify: 1,
+        description: '',
+        labelNames: [],
+        labelNames2: [],
+        markerExplainUrl: '',
+        dataset: [],
+        EnterClassify: [],
+        datasetType: 1,
+        exportFormat: 3,
+        markStyle: '',
+        relationshipLabels: [{
+          source: undefined,
+          dest: undefined,
+          name: ''
+        }
+        ]
+      },
+      inputSplice: '',
+      inputVisible: false,
+      classifyVisible: false,
+      classifyTab: 0,
+      alreadyFilesName: '',
+      classifyIndex: 0,
+      labelVisible: false,
+      ruleInline: {
+        name: [
+          { required: true, message: '请输入任务名称', trigger: 'blur' },
+          { required: true, message: '任务名称过长或过短', trigger: 'blur', min: 2, max: 10 }
+        ],
+        appId: [
+          { required: true, message: '请选择应用产品' }
+        ],
+        taskType: [
+          { required: true, message: '请选择任务类型' }
+        ],
+        description: [
+          { required: true, message: '请输入应用描述', trigger: 'blur' },
+          { required: true, message: '请将字数控制在10至500字符之间', trigger: 'blur', min: 10 }
+        ],
+        labelNames2: [
+          { validator: checkLabel }
+        ],
+        labelClassify: [
+          { required: true, message: '请添加分类' }
+        ],
+        markerExplainUrl: [
+          { required: true, message: '请上传标注说明' }
+        ],
+        dataset: [
+          { validator: this.validateDataset }
+        ],
+        datasetType: [
+          { required: true, message: '请选择标注数据集格式' }
+        ],
+        dataType: [
+          { required: true, message: '请选择数据类型' }
+        ],
+        markStyle: [
+          { required: true, message: '请选择标注形式' }
+        ],
+        relationshipLabels: [
+          { validator: this.validateRelaLabel }
+        ]
+      },
+      UploadModalVisible: false,
+      headers: { token: JSON.parse(sessionStorage.getItem('userInfo')).token },
+      checkList: [],
+      backupCheckList: [],
+      acceptArray: ['pdf', 'docx', 'xlsx'],
+      acceptClassify: ['xlsx'],
+      maxClassifySize: 2048,
+      maxSize: 102400,
+      ApplyList: null,
+      loading: false,
+      newLabel: null,
+      defaultFileList: [],
+      batchUploadVisible: false,
+      datasetColumns: [{
+        title: '勾选',
+        width: 80,
+        align: 'center',
+        : 'selection', 
+        
+        render: (h, { row, index }) => {
+          let flag = false
+          if (this.currentId === row.id) {
+            flag = true
+          }
+          const that = this
+          return h('Radio', {
+            props: {
+              value: flag
+            },
+            on: {
+              'on-change': (val) => {
+                that.currentId = row.id
+                that.formInline.dataset = [that.currentId]
+                that.getDistinct(this.formInline.dataset.join(','))
+              }
+            }
+          })
+        }
+      },
+      {
+        title: '数据集名称',
+        key: 'name'
+      },
+      {
+        title: '上传时间',
+        key: 'createTime',
+        sortable: true
+      }],
+      fileList: [],
+      uploadMode: 1,
+      currentId: null
+    }
+  },
+  created () {
+    const params = [{
+      name: '任务管理',
+      to: '/dataTask'
+    }, {
+      name: '发布任务',
+      to: '/dataTask/publishTask'
+    }]
+    this.$store.commit('changeBreadcrumb', params)
+        this.$api.taskManage.getApplyList().then(res => {
+      if (res.code === 200) {
+        this.ApplyList = res.data
+      } else {
+        this.$Message.error(res.msg)
+      }
+    })
+    if (this.taskId) {
+      this.$api.taskManage.getTaskDetial(this.taskId).then((res) => {
+        if (res.code === 200) {
+          console.log(res, 'resresres')
+          const { appId, name, description, labels, markerExplainUrl, dataset, taskType, exportFormat, type, labelsExt } = res.data
+          const list = dataset.map(item => {
+            return Number(item.id)
+          })
+           获取分类使用  labels[0].classes
+          const newLables = taskType === 2 ? labels[0].classes || [] : labels || []
+          const arr = markerExplainUrl.split('/')
+          const len = arr.length
+          this.alreadyFilesName = arr[len - 1]
+          this.$set(this.formInline, 'appId', appId)
+          this.$set(this.formInline, 'name', name)
+          this.$set(this.formInline, 'taskType', taskType)
+          this.$set(this.formInline, 'description', description)
+          .$set(this.formInline, 'classifyList', labels)
+          this.$set(this.formInline, 'labelNames2', newLables)
+          .$set(this.formInline, 'EnterClassify', newLables)
+          this.$set(this.formInline, 'markerExplainUrl', markerExplainUrl)
+          this.$set(this.formInline, 'dataset', list)
+          this.$set(this.formInline, 'exportFormat', exportFormat)
+          this.$set(this.formInline, 'dataType', type)
+          taskType === 7 && (this.$set(this.formInline, 'markStyle', 71))
+          taskType === 71 && (this.$set(this.formInline, 'markStyle', 72))
+          taskType === 10 && (this.$set(this.formInline, 'relationshipLabels', labelsExt))
+          
+          this.getDataList(taskType, dataset)
+          this.currentId = Number(dataset[0].id)
+        } else {
+          this.$Message.error(res.msg)
+        }
+      })
+    } else {
+      
+      this.getDataList(this.formInline.taskType)
+    }
+  },
+  methods: {
+    changeLabelNum ({ type, index }) {
+      if (type === 1) {
+        this.formInline.relationshipLabels.splice(index + 1, 0, {
+          source: undefined,
+          dest: undefined,
+          name: ''
+        })
+      } else if (type === 2) {
+        this.formInline.relationshipLabels.length === 1
+          ? (this.formInline.relationshipLabels = [
+            { source: undefined, dest: undefined, name: '' }
+          ])
+          : this.formInline.relationshipLabels.splice(index, 1)
+      }
+    },
+    repeatValid ({ label, name }) {
+      console.log(label, name)
+      let num = 0
+      this.formInline.relationshipLabels.forEach(item => {
+        if (item.source === label.source && label.dest === item.dest && item.name === label.name) {
+          num += 1
+        }
+      })
+      if (num >= 2) {
+        this.$Message.error('关系标签不允许重复添加！')
+        this.$set(label, name, null)
+      }
+    },
+    handleDatatypeChange (val) {
+      this.formInline.labelNames2 = []
+      this.currentId = null
+      if (val === 1) {
+        this.formInline.taskType = 1
+      } else {
+        this.formInline.taskType = 7
+        .formInline.markStyle = 71
+      }
+      .getDataList(this.formInline.taskType)
+    },
+    onOk (data) {
+      if (this.uploadMode === 1) {
+        if (data.ifClear) {
+          const labelList = this.formInline.labelNames2.filter((item) => item.dsExistFlag)
+          const newLabelList = data.labelList.filter((item) => {
+            return labelList.every((label) => label.name !== item)
+          })
+          this.formInline.labelNames2 = labelList.concat(newLabelList.map((item) => ({
+            name: item,
+            dsExistFlag: false
+          })))
+        } else {
+          const labelList = data.labelList.filter((item) => {
+            return this.formInline.labelNames2.every((label) => label.name !== item)
+          })
+          this.formInline.labelNames2 = this.formInline.labelNames2.concat(labelList.map(item => ({
+            name: item,
+            dsExistFlag: false
+          })))
+        }
+      } else {
+        data.labelList.forEach(item => {
+          if (this.formInline.labelNames2.every(label => label.name !== item.source)) {
+            this.formInline.labelNames2.push({
+              name: item.source,
+              dsExistFlag: false
+            })
+          }
+          if (this.formInline.labelNames2.every(label => label.name !== item.dest)) {
+            this.formInline.labelNames2.push({
+              name: item.dest,
+              dsExistFlag: false
+            })
+          }
+        })
+        if (data.ifClear) {
+          const tmpRelaArr = this.formInline.relationshipLabels.filter(item => item.dsExistFlag)
+          const newList = data.labelList.filter(item => {
+            return tmpRelaArr.every((label) => label.source !== item.source || label.dest !== item.dest || label.name !== item.name)
+          })
+          if (newList.length !== data.labelList.length) {
+            this.$Message.error('与已有关系组重复，已自动去重')
+          }
+          this.formInline.relationshipLabels = tmpRelaArr.concat(newList)
+        } else {
+          const tmpArr = this.formInline.relationshipLabels.filter(item => item.source || item.dest || item.name)
+          
+          const newList = data.labelList.filter(item => {
+            return tmpArr.every((label) => label.source !== item.source || label.dest !== item.dest || label.name !== item.name)
+          })
+          if (newList.length !== data.labelList.length) {
+            this.$Message.error('与已有关系组重复，已自动去重')
+          }
+          this.formInline.relationshipLabels = tmpArr.concat(newList)
+        }
+      }
+    },
+    validateRelaLabel (rule, value, callback) {
+      if (value.some(item => !item.source || !item.dest || !item.name)) {
+        callback(new Error('请添加完整关系标签'))
+      } else {
+        callback()
+      }
+    },
+    validateDataset (rule, value, callback) {
+      if (!this.formInline.dataset.length) {
+        callback(new Error('请选择数据集'))
+      } else {
+        callback()
+      }
+    },
+    onSelectOrCancel (selection, row) {
+      this.formInline.dataset = selection.map((item) => item.id)
+      this.getDistinct(this.formInline.dataset.join(','))
+    },
+     (dataList) {
+    .getDistinct(dataList.join(','))
+        getDistinct (dsIds) {
+      let url = 'getDistinct'
+      const { taskType } = this.formInline
+      if (taskType === 10) {
+        url = 'getDistinctExt'
+      }
+      this.$api.dataManager[url]({
+        dsIds
+      }).then(res => {
+        if (res.code === 200) {
+          let list = null
+          if (taskType !== 10) {
+            list = res.data.map(item => {
+              item.dsExistFlag = true
+              return item
+            })
+          } else {
+            if (res.data.labelsExt.length) {
+              const relationshipLabels = res.data.labelsExt.map((item) => ({ ...item, dsExistFlag: true }))
+              this.$set(this.formInline, 'relationshipLabels', relationshipLabels)
+            }
+            list = res.data.labels.map((item) => ({ ...item, dsExistFlag: true }))
+          }
+          const newList = list.concat(this.formInline.labelNames2.filter((item) => !item.dsExistFlag))
+          this.$set(this.formInline, 'labelNames2', newList)
+        } else {
+          this.$Message.error(res.msg)
+        }
+      })
+    },
+    getDataList (markerGenre, dataset) {
+      this.$api.dataManager.getDatasetList({
+        markerGenre
+      }).then(res => {
+        if (res.code === 200) {
+          res.data.forEach((item) => {
+            this.$set(item, 'checked', false)
+          })
+          this.checkList = res.data
+          this.backupCheckList = res.data
+          if (dataset && dataset.length >= 0) {
+            
+            const length = dataset.length
+            const list = []
+            dataset.forEach((item) => {
+              if (this.checkList.find(dataset => Number(item.id) === Number(dataset.id))) {
+                list.push(dataset)
+              }
+            })
+            if (list.length < length) {
+              this.$Message.warning({
+                content: '个别数据集已在其他地方被删除，请重新选择数据集！',
+                duration: 2,
+                background: true
+              })
+              this.$set(this.formInline, 'dataset', list)
+            }
+          }
+        } else {
+          this.$Message.error(res.msg)
+        }
+      })
+    },
+    downloadTemplate () {
+      this.$api.taskManage.getCategoryTemplateURL().then(res => {
+        if (res.code === 200) {
+          window.open(res.data.labelTempFileDownloadUrl)
+        } else {
+          this.$Message.error(res.msg)
+        }
+      })
+    },
+    handleSubmit (name) {
+      this.$refs[name].validate((valid) => {
+        if (valid) {
+          this.loading = true
+          const { appId, name, description, labelNames2, markerExplainUrl, dataset, taskType, exportFormat, markStyle, dataType, relationshipLabels } = this.formInline
+          const list = dataset.map(item => {
+            return {
+              datasetId: item
+            }
+          })
+          let classifyName = []
+          if (taskType === 2) {
+            classifyName = [{ name: '', classes: labelNames2 }]
+          } else if (taskType === 6 && !labelNames2.length) {
+            classifyName = [{ name: 'general', dsExistFlag: false, builtInFlag: true }]
+          } else if (taskType === 9) {
+            const tmpClassifyName = [{ name: '0', dsExistFlag: false }, { name: '1', dsExistFlag: false }]
+            classifyName = tmpClassifyName.filter((item) => {
+              return labelNames2.every(label => label.name !== item.name)
+            }).concat(labelNames2)
+          } else {
+            classifyName = labelNames2
+          }
+                    const postData = {
+             7 多标签 71
+            taskType: taskType === 4 ? markStyle : markStyle === 71 ? 7 : markStyle === 72 ? 71 : taskType,
+            appId,
+            name,
+            description,
+            labels: classifyName,
+            markerExplainUrl,
+            dataset: list,
+            exportFormat,
+            type: dataType
+          }
+          taskType === 10 && (postData.labelsExt = relationshipLabels)
+           则是重新发布，否则是新增
+          if (this.taskId) {
+            this.$api.taskManage.rePublishTask({
+              ...postData,
+              id: this.taskId
+            }).then(res => {
+              this.loading = false
+              if (res.code === 200) {
+                this.$router.push({
+                  name: 'DataTask'
+                })
+              } else {
+                this.$Message.error(res.msg)
+              }
+            }).catch(() => {
+              this.loading = false
+            })
+          } else {
+            this.$api.taskManage.postPublishTask(postData).then(res => {
+              this.loading = false
+              if (res.code === 200) {
+                this.$router.push({
+                  name: 'DataTask'
+                })
+              } else {
+                this.$Message.error(res.msg)
+              }
+            }).catch(() => {
+              this.loading = false
+            })
+          }
+        }
+      })
+    },
+    goBack () {
+      this.$router.go(-1)
+    },
+        uploadClassifySuccess (res) {
+      .formInline.classifyList.push(res.data[0])
+      if (res.code === 200) {
+        const list = []
+        res.data.classes.forEach(item => {
+          const label = this.formInline.labelNames2.filter(label => label.name === item.name)
+          if (!label.length) {
+            item.dsExistFlag = false
+            list.push(item)
+          }
+        })
+        this.formInline.labelNames2 = this.formInline.labelNames2.concat(list)
+      }
+    },
+        uploadSuccess (res, file, fileList) {
+       (res.code === 200) {
+      this.formInline.markerExplainUrl = res
+      this.fileList = fileList.slice(-1)
+       else {
+      .log(2222)
+      .$Message.error(res.msg)
+      .alreadyFilesName = ''
+      .formInline.markerExplainUrl = ''
+      .fileList = []
+      
+    },
+    uploadError () {
+      this.$Message.error('文件上传失败，请重新上传')
+    },
+    uploadFormatError (file, fileList) {
+      this.$Message.error('文件格式验证失败或文件过大')
+    },
+    uploadData () {
+      this.$router.push({
+        name: 'DataManage'
+      })
+    },
+        clickClassify (index) {
+      this.classifyTab = index
+    },
+    handleTimeChangeTop (val) {
+      this.formInline.labelNames2 = []
+      this.currentId = null
+      this.formInline.dataset = []
+      this.formInline.exportFormat = val === 4 ? 2 : val === 2 ? 4 : val === 3 ? 2 : val === 8 || val === 10 ? 5 : 3
+      this.formInline.markStyle = val === 4 ? 41 : ''
+      this.$set(this.formInline, 'labelNames2', [])
+      .getDataList(val === 4 ? 41 : val)
+    },
+    handleChangeLable (val) {
+      this.$set(this.formInline, 'labelNames2', [])
+      this.defaultFileList = []
+    },
+        deleteFileName () {
+      this.formInline.markerExplainUrl = ''
+      this.alreadyFilesName = ''
+    },
+        deleteClassify (index) {
+      this.formInline.classifyList.splice(index, 1)
+    },
+        addclassify () {
+      this.classifyVisible = true
+      this.$nextTick(() => {
+        this.$refs.inputValue1.currentValue = ''
+        this.$refs.inputValue1.focus()
+      })
+    },
+        addlabel () {
+      this.labelVisible = true
+      this.$nextTick(() => {
+        this.$refs.inputValue2.currentValue = ''
+        this.$refs.inputValue2.focus()
+      })
+    },
+        deletelabel (index) {
+      this.formInline.classifyList[this.classifyTab].classes.splice(index, 1)
+    },
+        blurs (names) {
+      if (names === 'classify') {
+        const addclassifyObject = {
+          name: '',
+          classes: []
+        }
+        if (this.$refs.inputValue1.currentValue) {
+          addclassifyObject.name = this.$refs.inputValue1.currentValue
+          this.formInline.classifyList.push(addclassifyObject)
+          this.classifyTab = this.formInline.classifyList.length - 1
+        } else {
+          this.$Message.error('分类名称不能为空')
+        }
+        this.classifyVisible = false
+      } else {
+        const addObj = {
+          name: ''
+        }
+        if (this.$refs.inputValue2.currentValue) {
+          addObj.name = this.$refs.inputValue2.currentValue
+          this.formInline.classifyList[this.classifyTab].classes.push(addObj)
+        } else {
+          this.$Message.error('标签名称不能为空')
+        }
+        this.labelVisible = false
+      }
+    },
+    handleAdd () {
+      this.inputVisible = true
+      this.$nextTick(() => {
+        this.$refs.addLabel.focus()
+      })
+    },
+    inputKeypress (e) {
+      const { charCode, code } = e
+      if (charCode === 13 && code === 'Enter') {
+        this.inputBlurs()
+      }
+    },
+    inputBlurs () {
+      const { newLabel } = this
+      const { labelNames2 } = this.formInline
+      if (newLabel) {
+        const label = labelNames2.filter(item => item.name === newLabel)
+        if (label.length > 0) {
+          this.$Message.warning('标签名重复，请重新输入！')
+        } else {
+          if (newLabel.trim() !== '') {
+            this.$set(this.formInline, 'labelNames2', [...labelNames2, { name: newLabel, dsExistFlag: false }])
+          }
+        }
+      }
+      this.inputVisible = false
+      this.newLabel = ''
+    },
+    handleCloseTag (event, name) {
+      const labels = this.formInline.labelNames2.filter(item => item.name !== name)
+      this.$set(this.formInline, 'labelNames2', labels)
+    },
+        validateClassifyList (rule, value, callback) {
+      let labelFlag = null
+      let classifyFlag = null
+      if (value.length <= 0) {
+        callback(new Error('请填写标签名称'))
+      } else if (value.length > 0) {
+        value.forEach(item => {
+          if (!item.name) {
+            classifyFlag = true
+          } else if (item.classes.length <= 0) {
+            labelFlag = true
+          }
+        })
+        if (labelFlag) {
+          callback(new Error('请添加标签名称'))
+        } else if (classifyFlag) {
+          callback(new Error('请添加标签名称'))
+        } else {
+          callback()
+        }
+      }
+    },
+    changeMarkStyle (vale) {
+      this.$set(this.formInline, 'labelNames2', [])
+      this.formInline.exportFormat = vale === 41 ? 2 : 3
+      this.getDataList(vale)
+    },
+    onInputChange (e) {
+      if (e.target.value) {
+        this.checkList = this.backupCheckList.filter((item) => item.name.indexOf(e.target.value) > -1)
+      } else {
+        this.checkList = this.backupCheckList
+      }
+    },
+    handleBatchAdd (mode) {
+      this.uploadMode = mode
+      this.batchUploadVisible = true
+    }
+  },
+  watch: {
+    'formInline.taskType': {
+      handler (val) {
+        if (val === 7 && !this.formInline.markStyle) {
+          this.checkList = []
+          return
+        }
+        this.getDataList(val === 4 ? 41 : val)
+      }
+    },
+    'formInline.markStyle': {
+      handler (val, oldVal) {
+        if (val === oldVal) return
+        if (this.formInline.taskType === 7) {
+          this.getDataList(val === 71 ? 7 : 71)
+        }
+      }
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+.taskpublish{
+  height: 100%;
+  padding: 20px;
+  overflow-y: scroll;
+  .uploadtips{
+    line-height: 16px;
+    font-size: 12px;
+    color: #999999;
+  }
+  .upload-template {
+    color: #0080FF;
+    font-size: 12px;
+  }
+  .btn{
+    width: 90px;
+    font-size: 12px;
+  }
+  .groupCheck{
+    width: 542px;
+    height: 150px;
+    border: 1px solid #C8C8C8;
+    overflow-y: scroll;
+    .title{
+      padding: 0px 20px;
+      font-size: 12px;
+      background-color: #F6FBFF;
+      height: 30px;
+      width: 100%;
+    }
+  }
+  .uploadData{
+    margin-bottom: 20px;
+    padding-left:130px;
+    display: inline-block;
+    cursor: pointer;
+    color: #0080FF;
+  }
+}
+.classifyHand{
+  display: flex;
+  position: relative;
+  width: 352px;
+  height: 200px;
+  border: 1px solid rgba(0,0,0,.1);
+  .classifyLeft, .classifyRight{
+    padding: 10px 0px;
+    flex: 1;
+    overflow-y: scroll;
+    .list{
+      position: relative;
+      height: 30px;
+      margin-bottom: 8px;
+      margin-left: 10px;
+      cursor: pointer;
+      text-align: center;
+      border:1px solid #C8C8C8;
+      width: 150px;
+      border-radius: 3px;
+      font-size: 12px;
+      .close{
+        position: absolute;
+        top: 10px;
+        right: 5px;
+        color: #FE4F4F;
+        display: none;
+      }
+      &:hover{
+        border: 1px solid #FE4F4F;
+        .close{
+          display: inline;
+        }
+      }
+      .close{
+        margin-left: 15px;
+        display: none;
+        color: salmon;
+      }
+      &:hover{
+        border-color: #0080FF;
+        .close{
+          display: inline-block;
+        }
+      }
+    }
+    .active{
+      border: 1px solid #379AFF;
+    }
+    /deep/ input{
+      padding: 0px 5px;
+      margin-left: 10px;
+      width: 150px;
+      height: 30px;
+      border-radius: 3px;
+      border:1px solid rgba(0,0,0,.1);
+      font-size: 12px;
+    }
+    .add{
+      margin-left: 20px;
+      cursor: pointer;
+      color: #0080FF;
+      font-size: 12px;
+    }
+  }
+  .classifyLine{
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      z-index: 999;
+      width: 1px;
+      height: 180px;
+      background-color: rgba(0, 0, 0, .1);
+    }
+}
+/deep/ .ivu-radio-group-button {
+  .ivu-radio-wrapper{
+    width:110px;
+    text-align: center;
+  }
+  .ivu-radio-wrapper-checked {
+    background-color: #379AFF;
+    color: white;
+    font-size: 12px;
+  }
+}
+.alreadyFiles{
+  display: flex;
+  cursor: pointer;
+  margin-bottom: 10px;
+  padding: 5px 10px;
+  width: 540px;
+  height: 40px;
+  font-size: 12px;
+  &:hover{
+    background-color: rgba(0, 0, 0, .1);
+    .close{
+      display: inline-block;
+    }
+  }
+  .close{
+    display: none;
+    text-align: right;
+    font-size: 20px;
+    line-height: 30px;
+    flex: 1;
+  }
+}
+.enterBox{
+  padding: 20px;
+  margin-top: 30px;
+  width: 542px;
+  height: 200px;
+  overflow-y: scroll;
+  border: 1px solid #C8C8C8;
+  border-radius: 3px;
+  .entertext{
+    cursor: pointer;
+    display: inline-block;
+    margin-right: 10px;
+    height: 30px;
+    line-height: 30px;
+    padding: 0px 10px;
+    font-size: 12px;
+    background-color: rgba(200, 217, 250, 0.1);
+    border: 1px solid #379AFF;
+    border-radius: 3px;
+    color: #379AFF;
+    &:hover {
+      .enterClose{
+        display: inline-block;
+      }
+    }
+    .enterClose{
+      float: right;
+      display: none;
+      line-height: 30px;
+      font-size: 14px;
+    }
+  }
+}
+/deep/ .ivu-form .ivu-form-item-label {
+  text-align: left;
+}
+/deep/ .ivu-checkbox-wrapper-checked{
+  color: #1890FF;
+}
+/deep/ .ivu-checkbox-group {
+  padding: 10px 20px;
+}
+/deep/ .ivu-upload-drag {
+  background-color: #F6FBFF;
+}
+/deep/ .ivu-input-group-append {
+  background-color: #379AFF;
+  font-size: 12px;
+  color: #ffffff;
+}
+.datasetType .ivu-radio-wrapper{
+  text-align: left !important;
+}
+.show-err /deep/ .ivu-form-item-error-tip{
+  display: none;
+}
+.show-err.ivu-form-item-error /deep/ .ivu-input{
+  border: 1px solid #dcdee2;
+}
+.mark-form .ivu-radio-wrapper{
+  margin-right: 30px;
+}
+ .dataset{
+   /deep/.ivu-table-header thead tr th{
+     padding: 0;
+   }
+  /deep/.ivu-table td, .ivu-table th{
+    height: 32px;
+  }
+ }
+ .dataset.ivu-form-item-error{
+    /deep/.ivu-input{
+       border: 1px solid #dcdee2;
+     }
+    /deep/.ivu-input-icon{
+      color: #808695;
+    }
+  }
+/deep/.ivu-table-header .ivu-table-cell-with-selection label{
+  display: none;
+}
+/deep/.ivu-table-header .ivu-table-cell-with-selection::before{
+  content: '勾选';
+}
+/deep/.ivu-table-wrapper .ivu-radio-wrapper{
+  margin-right: 0;
+}
+.tag-wrap{
+  max-height: 100px;
+  overflow-y: auto;
+}
+</style>
+<template>
+  <div class="data-task-detail">
+    <div class="task-detail-body" v-if="state === 1 || state === 2 || state === 3">
+      <div class="title">任务状态</div>
+      <div class="task-steps">
+        <steps :stepList="stepList" :current="stateMap[state]" :status="status" />
+      </div>
+    </div>
+    <div class="task-detail-body" v-if="state === 4 || state === 5 || state === 6 || state === 7">
+      <div class="title">标注进度</div>
+      <div class="progress">
+        <div class="circle">
+          <i-circle class="circle-outer" stroke-color="#67B5FF" :percent="infomation.progress?Number(infomation.progress)*100:0">
+            <div class="finish">已完成</div>
+            <span class="demo-Circle-inner circle-task">{{`${infomation.progress?(Number(infomation.progress)*100).toFixed(2):0}%`}}</span>
+          </i-circle>
+          <div class="circle-info" v-if="state === 4">
+            <div class="circle-value"><span>用时</span>{{infomation.costTime?infomation.costTime:null}}</div>
+            <div class="circle-value"><span>预计完成时间</span>{{infomation.expectFinishTime?infomation.expectFinishTime:'暂无'}}</div>
+          </div>
+          <div class="circle-info" v-if="state === 5 || state === 6">
+            <div class="circle-value"><span>用时</span>{{infomation.costTime?infomation.costTime:null}}</div>
+            <div class="circle-value"><span>数据量</span>{{ infomation.imgCount ? infomation.imgCount : 0 }}</div>
+          </div>
+          <div class="circle-info" v-if="infomation.state === 7">
+            <div class="circle-value"><span>用时</span>{{ infomation.costTime ? infomation.costTime : null }}</div>
+            <div class="circle-value"><span>暂停时间</span>{{infomation.pauseTime?infomation.pauseTime:'暂无'}}</div>
+          </div>
+        </div>
+        <div class="progress-info" v-if="state === 4 || state === 7">
+          <div class="info">
+            <div class="title-top">总数</div>
+            <div class="title-val">{{infomation.imgCount?infomation.imgCount:null}}</div>
+            <div class="title-percent">100%</div>
+          </div>
+          <div class="info">
+            <div class="title-top">已标注</div>
+            <div class="title-val marked">{{infomation.markerCount?infomation.markerCount:null}}</div>
+              <div class="title-percent">{{infomation.markerCount&&infomation.imgCount!=0?`${((infomation.markerCount/infomation.imgCount)*100).toFixed(2)}%`:'0%'}}</div>
+          </div>
+          <div class="info">
+            <div class="title-top">未标注</div>
+            <div class="title-val notMark">{{infomation.unMarkerCount?infomation.unMarkerCount:null}}</div>
+              <div class="title-percent">{{infomation.unMarkerCount && infomation.imgCount!=0?`${((infomation.unMarkerCount/infomation.imgCount)*100).toFixed(2)}%`:'0%'}}</div>
+          </div>
+          <div class="info">
+            <div class="title-top">已审核</div>
+            <div class="title-val marked">{{infomation.auditCount?infomation.auditCount:null}}</div>
+            <div class="title-percent">{{infomation.auditCount&& infomation.imgCount!=0?`${((infomation.auditCount/infomation.imgCount)*100).toFixed(2)}%`:'0%'}}</div>
+          </div>
+          <div class="info">
+            <div class="title-top">未审核</div>
+            <div class="title-val notMark">{{infomation.unAuditCount?infomation.unAuditCount:null}}</div>
+            <div class="title-percent">{{infomation.unAuditCount&& infomation.imgCount!=0?`${((infomation.unAuditCount/infomation.imgCount)*100).toFixed(2)}%`:'0%'}}</div>
+          </div>
+        </div>
+        <div class="download-btn-container" v-if="infomation.state === 4 || infomation.state === 5 || infomation.state === 7">
+          <i-button v-if="isCreator" type="primary" @click="previewDataset(infomation, 1,labelType)" icon="ios-eye-outline" :disabled='!(infomation.auditCount && infomation.auditCount > 0)'>预览已审核数据</i-button>
+          <i-button v-if="isCreator && infomation.state !== 5" type="primary" @click="packingDownloadDataset" :loading="isPacking" icon="ios-folder-outline" :disabled='!(infomation.auditCount && infomation.auditCount > 0 && downloadEnable)'>{{ isPacking ? '数据打包中...' : '打包已审核数据' }}</i-button>
+          <i-button v-if="isCreator" type="primary" @click="downloadMarkedData(infomation)" :disabled="!downloadEnable" icon="ios-download-outline">下载已审核数据</i-button>
+        </div>
+      </div>
+    </div>
+    <div class="task-detail-body">
+      <div class="title">基本信息</div>
+      <Infomation :infomation="infomation" :titleInfo="titleInfo" />
+    </div>
+    <div class="task-detail-body">
+      <div class="title">数据信息</div>
+      <dataInfo
+        :info="dataInfos"
+        :categoryList="categoryList"
+        :markerExplainUrl="markerExplainUrl"
+        :isCreator="isCreator"
+        @previewDataset="previewDataset"
+      />
+    </div>
+    <div class="btns">
+      <Button class="btn" type="primary" v-if="(state === 1 || state === 3) && userInfo.userId === infomation.creator" @click="cancelTask">取消任务</Button>
+      <Button class="btn" type="primary" v-if="state === 2 && userInfo.userId === infomation.creator" @click="rePublish">重新发起</Button>
+      <Button class="btn" type="primary" v-if="state === 6 && userInfo.userId === infomation.creator" :loading="loading">打包中</Button>
+      <Button class="del btn" @click="del" v-if="state === 2 && userInfo.userId === infomation.creator">删除</Button>
+    </div>
+    <loading v-show="isLoading" />
+    <preview-img-modal
+      v-if="previewModalVisible"
+      :title="current_datasetName"
+      :previewModalVisible.sync="previewModalVisible"
+      :previewImgInfo="previewImgInfo"
+      :spinShow="previewImgSpinShow"
+      :labelList="labelList"
+      :labelType="labelType"
+      :isDirty="isDirty"
+      @onPageChange="onPageChange"
+    >
+    </preview-img-modal>
+    <preview-txt-classify-modal v-if="txtPreviewModal" :spinShow="previewTxtSpinShow" :current_datasetName="current_datasetName" :txtPreviewModal.sync="txtPreviewModal" :previewTxtInfo="previewTxtInfo" :exportInfo="exportInfo"></preview-txt-classify-modal>
+  </div>
+</template>
+<script>
+import Steps from '@/components/Steps.vue'
+import Infomation from '@/components/Infomation.vue'
+import dataInfo from '@/components/dataInfo.vue'
+import Loading from '@/components/Loading.vue'
+import previewImgModal from '@/components/previewImgModal'
+import previewTxtClassifyModal from '@/components/previewTxtClassifyModal'
+import { mixin } from '@/utils/mixin'
+import { dsExportFormat } from '@/constants/index'
+
+export default {
+  mixins: [mixin],
+  data () {
+    const { taskId, name, state } = this.$route.query
+    const userInfo = JSON.parse(sessionStorage.getItem('userInfo'))
+    return {
+      taskId,
+      name,
+      stateName: state,
+      userInfo,
+      isLoading: true,
+      loading: true,
+      stateMap: {
+        1: 1, 
+        2: 1, 
+        3: 2, 
+        4: 3, 
+        5: 4, 
+        6: 5 
+      },
+      stepList: [
+        {
+          content: '发起'
+        },
+        {
+          content: '待审核'
+        },
+        {
+          content: '待安排'
+        }
+      ],
+      titleInfo: {
+        row1Col1: '发布人',
+        row1Col2: '应用领域',
+        row1Col3: '数据类型',
+        row1Col4: '任务类型',
+        row2Col1: '任务名称',
+        row2Col2: '标注数据集格式',
+        row2Col3: '提交次数',
+        row2Col4: '任务描述',
+        row3Col1: '标注形式'
+      },
+      state: 0,
+      status: 'process',
+      categoryList: [],
+      infomation: {},
+      markerExplainUrl: null,
+      taskTypeMap: {
+        1: '图像检测',
+        2: '图像分类',
+        3: '图像分割',
+        4: '点',
+        41: '点',
+        5: '线',
+        6: 'ocr',
+        7: '文本分类',
+        8: '序列标注',
+        9: '文本匹配',
+        10: '关系抽取'
+      },
+      modelTitleInfo: {
+        row1Col1: '任务名称',
+        row1Col2: '分类数',
+        row1Col3: '标注数',
+        row2Col1: '召回率',
+        row2Col2: '精确率',
+        row2Col3: 'F1',
+        row3Col1: '一次性通过率'
+      },
+      modelInfo: {},
+      labelType: 0
+    }
+  },
+  components: {
+    Steps,
+    Infomation,
+    dataInfo,
+    Loading,
+    previewImgModal,
+    previewTxtClassifyModal
+  },
+  computed: {
+    isCreator () {
+      return this.userInfo.userId === this.infomation.creator
+    },
+    dataInfos () {
+      const { imgCount, labelNum, dataset, taskType, labelsExt } = this.infomation
+      return { imgCount, labelNum, dataset, taskType, labelsExt }
+    }
+  },
+  created () {
+    const { taskId, name, stateName } = this
+    const params = [{
+      name: '任务管理',
+      to: '/dataTask'
+    }, {
+      name: `${name}【${stateName}】`,
+      to: '/dataTask/detail'
+    }]
+    this.$nextTick(() => {
+      this.$store.commit('changeBreadcrumb', params)
+    })
+        this.$api.taskManage.getTaskDetial(taskId).then((res) => {
+      this.isLoading = false
+      if (res.code === 200) {
+        console.log(res.data, 'ghfjksdljhgfkdslfhgkdl')
+        const {
+          publishTime,
+          rejectTime,
+          passTime,
+          hasMarkedData,
+          state,
+          principalUsername,
+          labels,
+          taskType,
+          markerExplainDownloadUrl,
+          labelsExt
+        } = res.data
+        this.state = state
+        this.labelType = taskType
+        if (state === 6) {
+          this.isPacking = true
+          this.downloadEnable = false
+        }
+        if (state !== 6 && hasMarkedData) {
+          this.isPacking = false
+          this.downloadEnable = true
+        }
+        const step1 = publishTime ? `发起：${publishTime}` : '发起'
+        let step2 = '待审核'
+        let step3 = '待安排'
+         { taskType,exportFormat } = res.data
+        this.infomation = {
+          ...res.data,
+          row1Col1: res.data.creatorUsername,
+          row1Col2: res.data.appName,
+          row1Col3: res.data.type === 1 ? '图片' : '文本',
+          row1Col4: this.taskTypeMap[res.data.taskType],
+          row2Col1: res.data.name,
+          row2Col2: res.data.exportFormat && `${dsExportFormat[res.data.exportFormat]} 格式`,
+          row2Col3: `第${res.data.submitCount}次提交`,
+          row2Col4: res.data.description,
+          row3Col1: taskType === 7 ? '单标签' : taskType === 71 ? '多标签' : ''
+        }
+        console.log(this.infomation, 'infomationinfomationinfomation')
+        const { model } = res.data
+        this.modelInfo = {
+          row1Col1: (model && model.taskName) || '暂无',
+          row1Col2: (model && model.labelNum) || '暂无',
+          row1Col3: (model && model.passCount) || '暂无',
+          row2Col1: (model && model.recallPercent) ? `${(model.recallPercent * 100).toFixed(2)}%` : '暂无',
+          row2Col2: (model && model.percision) ? `${(model.percision * 100).toFixed(2)}%` : '暂无',
+          row2Col3: (model && model.f1Score) || '暂无',
+          row3Col1: (model && model.passPercent) ? `${model.passPercent}%` : '暂无'
+        }
+        
+        if (this.infomation.taskType === 2) {
+          this.categoryList = labels[0].classes || []
+        } else if (this.infomation.taskType === 10) {
+          this.categoryList = labelsExt || []
+        } else {
+          this.categoryList = labels || []
+        }
+        .categoryList = this.infomation.taskType === 2 ? labels[0].classes || [] : labels || []
+        this.markerExplainUrl = markerExplainDownloadUrl
+        switch (state) {
+          case 1: 
+             = '等待管理员审核'
+            break
+          case 2: 
+            step2 = `被${principalUsername}打回${rejectTime ? '：' + rejectTime : ''}`
+            this.status = 'error'
+            break
+          case 3: 
+            step2 = `审核通过${passTime ? '：' + passTime : ''}`
+            break
+          case 4: 
+            step3 = '管理员已安排人员'
+            break
+          default:
+            step3 = '管理员已安排人员'
+            break
+        }
+        this.stepList = [
+          {
+            content: step1
+          },
+          {
+            content: step2
+          },
+          {
+            content: step3
+          }
+        ]
+      } else {
+        this.$Message.error(res.msg)
+      }
+    }).catch(() => {
+      this.isLoading = false
+    })
+  },
+  methods: {
+    cancelTask () {
+      this.$Modal.confirm({
+        title: '提示',
+        content: '确定要取消该任务吗？',
+        loading: true,
+        onOk: () => {
+          this.$api.taskManage.deleteTask(this.taskId).then(res => {
+            
+            this.$Modal.remove()
+            if (res.code === 200) {
+              this.$Message.info('任务取消成功')
+              this.$router.push({
+                name: 'DataTask'
+              })
+            } else {
+              this.$Message.error(res.msg)
+            }
+          })
+        },
+        onCancel: () => {
+          this.$Modal.remove()
+        }
+      })
+    },
+    del () {
+      this.$Modal.confirm({
+        title: '提示',
+        content: '确定要删除该任务吗？',
+        loading: true,
+        onOk: () => {
+          this.$api.taskManage.deleteTask(this.taskId).then(res => {
+            
+            this.$Modal.remove()
+            if (res.code === 200) {
+              this.$Message.info('任务删除成功')
+              this.$router.push({
+                name: 'DataTask'
+              })
+            } else {
+              this.$Message.error(res.msg)
+            }
+          })
+        },
+        onCancel: () => {
+          .$Modal.remove()
+        }
+      })
+    },
+    rePublish () {
+      this.$router.push({
+        path: '/dataTask/publishTask',
+        query: {
+          name: this.name,
+          state: this.stateName,
+          taskId: this.taskId
+        }
+      })
+    },
+    downloadMarkedData (info) {
+      const { auditCount, exportUrl } = info
+      if (Number(auditCount)) {
+        if (exportUrl) {
+          window.open(exportUrl)
+        } else {
+          this.$Message.destroy()
+          this.$Message.error('请先打包已审核数据再进行下载')
+        }
+      } else {
+        this.$Message.destroy()
+        this.$Message.error('暂无审核通过的数据')
+      }
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+.data-task-detail{
+  position: relative;
+  padding: 30px;
+  min-width: 940px;
+  .task-detail-body{
+    padding-bottom: 30px;
+    border-bottom: 1px solid #DFE3E9;
+    margin-bottom: 20px;
+    .progress{
+      : hidden;
+      display: flex;
+      .circle{
+        float: left;
+        display: flex;
+        font-size: 14px;
+        .circle-task{
+          font-size:22px;
+          color:#67B5FF;
+        }
+        .finish{
+          padding-bottom: 5px;
+          color:#67B5FF;
+          font-size: 13px;
+        }
+      }
+      .progress-info{
+        display: flex;
+        font-size: 16px;
+        .title-val{
+          text-align:center;
+          color: #6DB5FF;
+          font-size: 24px;
+          padding:8px 0;
+        }
+        .marked{
+          color: #1AC47C;
+        }
+        .notMark{
+          color: #FFB000;
+        }
+        .info{
+          padding-right:50px;
+          .title-top,.title-percent{
+            padding-left:4px;
+          }
+          .title-percent{
+            color: #666;
+          }
+          .option{
+            .iconfont{
+              color: #67B5FF;
+              cursor:pointer
+            }
+            .iconyulan1{
+              margin: 0 10px 0 7px
+            }
+          }
+        }
+      }
+      .circle-info{
+        padding-left:30px;
+        margin-right:30px;
+        .circle-value{
+          width: 200px;
+          color: #666;
+          background: rgba(223,227,233,0.3);
+          height: 30px;
+          line-height: 30px;
+          margin-top: 20px;
+          padding: 0 10px;
+          overflow: hidden;
+          span {
+            padding-right: 10px;
+          }
+        }
+      }
+      .circle-outer,.circle-info{
+        float: left;
+      }
+      .download-btn-container {
+        height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        margin-left: 20px;
+        border-left: #ebebeb solid 1px;
+        padding-left: 20px;
+        /deep/.ivu-btn {
+          font-size: 12px;
+          /deep/.ivu-icon {
+            font-weight: 600;
+            font-size: 16px!important;
+          }
+        }
+      }
+    }
+    .task-steps{
+      padding:0 15px;
+    }
+    .title{
+      padding-bottom: 15px;
+      position: relative;
+      padding-left:15px;
+      &:before{
+        content: "";
+        width: 4px;
+        height: 14px;
+        background-color: #67B5FF;
+        position: absolute;
+        top:3px;
+        left:0;
+      }
+    }
+  }
+  .data-picker{
+    padding-bottom:10px;
+  }
+  .btns{
+    .btn{
+      font-size: 12px;
+      margin-right:20px;
+    }
+    .btn-tips{
+      font-size: 12px;
+      padding-top:10px;
+    }
+    .del{
+      padding:0 30px;
+    }
+  }
+  /deep/ .ivu-steps-horizontal .ivu-steps-content{
+    padding-left:0;
+  }
+  @media screen and (min-width:1281px) and (max-width:1440px) {
+   .progress-info{
+     .info{
+       padding-right: 30px!important;
+     }
+   }
+  }
+  @media screen and (min-width: 1441px) {
+    .progress{
+      .circle-info{
+        padding-left: 30px;
+        margin-right: 30px;
+        .circle-value{
+          width: 200px;
+        }
+      }
+    }
+    .progress-info{
+     .info{
+       padding-right: 50px!important;
+     }
+   }
+  }
+}
+</style>
+<template>
+    <div class="wrap">
+      <div class="topHeader">
+        <DataHeader :headerType='3'/>
+      </div>
+      <div class="bg-login">
+        <div class="login-left">
+          <div class="login-left-top">欢迎登录</div>
+          <div class="login-left-top">深兰智能数据标注平台！</div>
+        </div>
+        <div class="login-right">
+          <div class="login-title">
+            <i class='iconfont iconback' @click='goLogin'></i>
+            <span>找回密码</span>
+          </div>
+          <Form class="resetPsw-form" ref="resetPsw" :model="resetPsw" hide-required-mark :rules="ruleValidate">
+            <FormItem label="账号" prop="account">
+              <Input v-model="resetPsw.account" placeholder="请输入您的邮箱" />
+            </FormItem>
+            <FormItem label="验证码" prop="code">
+              <Input v-model="resetPsw.code" placeholder="请输入验证码" />
+              <Button class="code-btn" @click="sendCode('resetPsw')" :disabled="codeBtnDisabled">{{tipsCode}}</Button>
+            </FormItem>
+            <FormItem label="密码" prop="password">
+              <Input type="password" v-model="resetPsw.password" placeholder="请输入新密码" @on-enter="handleSubmit('resetPsw')" />
+            </FormItem>
+            <FormItem label="确认密码" prop="confirmPsw">
+              <Input type="password" v-model="resetPsw.confirmPsw" placeholder="请确认新密码" @on-enter="handleSubmit('resetPsw')" />
+            </FormItem>
+            <FormItem>
+              <Button type="primary" class="reset-btn" :loading="loading" @click="handleSubmit('resetPsw')">确定</Button>
+            </FormItem>
+          </Form>
+        </div>
+        <security-modal
+          v-if="securityModalVisible"
+          ref="securityModal"
+          :visible.sync="securityModalVisible"
+          :securityCodeBtnDisabled="securityCodeBtnDisabled"
+          @securityModalOk="securityModalOk"
+        >
+        </security-modal>
+      </div>
+    </div>
+</template>
+<script>
+ LoginHeader from '@/components/LoginHeader'
+import DataHeader from '@/components/Header'
+import securityModal from './securityModal'
+export default {
+  components: {
+    DataHeader,
+    securityModal
+  },
+  data () {
+    const checkAccount = (rule, value, callback) => {
+      if (value) {
+        const emailReg = /^[\w|-]+@[a-z0-9]+(\.[a-z]{2,4}){1,2}$/
+        if (emailReg.test(value)) {
+          callback()
+        } else {
+          callback(new Error('请输入有效邮箱'))
+        }
+      } else {
+        callback(new Error('请输入邮箱'))
+      }
+    }
+    const checkPassword = (rule, value, callback) => {
+      if (value) {
+        const passwordReg = /^(?![a-zA-z]+$)(?!\d+$)(?![!@#$%^&*]+$)[a-zA-Z\d!@#$%^&*]{8,16}$/
+        if (value.length < 8 || value.length > 16) {
+          callback(new Error('密码长度为8-16字符'))
+        }
+        if (!passwordReg.test(value)) {
+          callback(new Error('必须由数字、字母、特殊字符中的两种以上组成'))
+        } else {
+          callback()
+        }
+      } else {
+        callback(new Error('请输入密码'))
+      }
+    }
+    return {
+      tipsCode: '获取验证码',
+      count: 60,
+      interVal: null,
+      codeBtnDisabled: false,
+      securityModalVisible: false,
+      securityCodeBtnDisabled: false,
+      resetPsw: {
+        account: '',
+        password: '',
+        code: '',
+        confirmPsw: ''
+      },
+      ruleValidate: {
+        account: [
+          { required: true, validator: checkAccount, trigger: 'blur' }
+        ],
+        password: [
+          { required: true, validator: checkPassword, trigger: 'blur' }
+        ],
+        confirmPsw: [
+          { required: true, validator: this.checkConfirmPassword, trigger: 'blur' }
+        ]
+      },
+      loading: false,
+      resetPswToken: ''
+    }
+  },
+  mounted () {
+
+    },
+  methods: {
+    handleSubmit (name) {
+      this.$refs[name].validate((valid) => {
+        if (valid) {
+          this.loading = true
+          this.$api.login.resetPassword({
+            account: this.resetPsw.account,
+            passWord: this.$md5(this.resetPsw.password),
+            token: this.resetPsw.code
+          }).then(res => {
+            this.loading = false
+            if (res.code !== 200) {
+              this.$Message.destroy()
+              this.$Message.error(res.msg)
+            } else {
+              this.$Message.success('操作成功')
+              this.$router.push('/login')
+            }
+          }).catch(err => {
+            console.log(err)
+            this.loading = false
+          })
+        }
+      })
+    },
+    checkConfirmPassword (rule, value, callback) {
+      if (value) {
+        const password = this.resetPsw.password
+        if (value === password) {
+          callback()
+        } else {
+          callback(new Error('两次输入内容不一致，请核对重新输入'))
+        }
+      } else {
+        callback(new Error('请再次输入新密码'))
+      }
+    },
+    sendCode (name) {
+      this.$refs[name].validateField('account', (error) => {
+        if (error === '') {
+          this.securityModalVisible = true
+        }
+      })
+    },
+    countDown () {
+      this.codeBtnDisabled = true
+      this.count = 60
+      this.tipsCode = `重新获取（${this.count}）`
+      this.interVal = setInterval(() => {
+        this.count--
+        this.tipsCode = `重新获取（${this.count}）`
+        if (this.count <= 0) {
+          this.count = 0
+          this.tipsCode = '获取验证码'
+          this.codeBtnDisabled = false
+          clearInterval(this.interVal)
+        }
+      }, 1000)
+    },
+    securityModalOk (obj) {
+      this.securityCodeBtnDisabled = true
+      const account = this.resetPsw.account.trim()
+      this.$api.login.getResetToken({
+        account,
+        captchaCode: obj.captchaCode.trim(),
+        token: obj.token.trim()
+      }).then(res => {
+        this.securityCodeBtnDisabled = false
+        if (res.code === 200) {
+          this.securityModalVisible = false
+          this.$Message.success('验证码发送成功')
+          this.countDown()
+        } else {
+          this.securityModalVisible = true
+          this.tipsCode = '获取验证码'
+          this.$Message.destroy()
+          this.$Message.error(res.msg)
+          this.$refs.securityModal.getTokenImg() 
+        }
+      }).catch(err => {
+        console.log(err)
+        this.securityModalVisible = false
+        this.tipsCode = '获取验证码'
+        this.securityCodeBtnDisabled = false
+      })
+    },
+    securityModalCancel (status) {
+      this.securityModalVisible = status
+    },
+    goLogin () {
+      console.log('dddd')
+      this.$router.push({
+        name: 'Login'
+      })
+    }
+  }
+}
+</script>
+<style scoped lang="less">
+@import "./Login.less";
+.resetPsw-form{
+  margin-top: 15px;
+  padding: 15px 45px 0;
+  .ivu-form-item{
+    /deep/.ivu-form-item-label{
+      width: 70px;
+      text-align: justify;
+      text-align-last: justify;
+      -moz-text-align-last: justify;
+    }
+    /deep/.ivu-form-item-content{
+      display: inline-block;
+      width: 270px;
+      .code-btn{
+        position: absolute;
+        top: 0;
+        right: 0;
+      }
+      .ivu-input-wrapper{
+        border-bottom: 1px solid #202020;
+        /deep/.ivu-input{
+          padding: 4px 0;
+          border: none;
+          box-shadow: none;
+        }
+        /deep/.ivu-form-item-error .ivu-input:focus{
+          border: none;
+        }
+      }
+      .reset-btn{
+        width: 340px;
+        height: 39px;
+        font-size: 16px;
+        background: #062D5C;
+        border: 1px solid #062D5C;
+        border-radius: 20px;
+        margin-top:19px;
+        color: #fff;
+      }
+    }
+  }
+}
+</style>
+import axios from 'axios'
+import store from '@/store'
+import router from '@/router'
+import { Message } from 'view-design'
+/**
+ * 提示函数
+ * 显示五秒后关闭
+ * @param {String} type: 提示类型（成功，失败，警告）
+ * @param {String} msg: 提示文案
+ * @param {String} time: 文案显示时间
+ */
+const tip = (type, msg, time = 5) => {
+  if (type === 'error') {
+    Message.error(msg, time)
+  }
+  if (type === 'warning') {
+    Message.warning(msg, time)
+  }
+}
+const toLogin = () => {
+  router.replace({
+    path: '/login'
+  })
+}
+/**
+ * 请求失败后的错误统一处理
+ * @param {Number} status 请求失败的状态码
+ */
+const errorHandle = (status, other) => {
+  switch (status) {
+    : 未登录状态，跳转登录页
+    case 401:
+      sessionStorage.removeItem('userInfo')
+      store.dispatch('changeUserData', null)
+      .warning('登录状态已过期，请重新登录', 1)
+      toLogin()
+      break
+     token过期
+    
+    case 403:
+      tip('登录过期，请重新登录')
+      sessionStorage.removeItem('userInfo')
+      store.dispatch('changeUserData', null)
+      toLogin()
+      break
+    
+    case 404:
+      tip('请求的资源不存在')
+      break
+    case 500:
+      tip('error', other)
+      break
+    default:
+      console.log(other)
+  }
+}
+const requestService = axios.create({
+  timeout: 1000 * 60 * 5
+})
+requestService.interceptors.request.use(config => {
+  const userInfo = JSON.parse(sessionStorage.getItem('userInfo'))
+  const token = userInfo && userInfo.token
+  config.headers.token = token
+  return config
+}, error => {
+  console.log(error)
+  Promise.reject(error)
+})
+
+requestService.interceptors.response.use(
+  response => response.status === 200 ? Promise.resolve(response.data) : Promise.reject(response),
+  error => {
+    const { response } = error
+    if (response) {
+      
+      errorHandle(response.status, response.data.Message)
+      return Promise.reject(response)
+    } else {
+      
+      :请求超时或断网时，更新state的network状态
+      .vue中控制着一个全局的断网提示组件的显示隐藏
+      
+      if (!window.navigator.onLine) {
+        store.commit('changeNetwork', false)
+      } else {
+        return Promise.reject(error)
+      }
+    }
+  }
+)
+export default requestService
+<template>
+<div class="data-labeling-home">
+  <router-view></router-view>
+</div>
+</template>
+<script>
+export default {
+  data () {
+    return {}
+  }
+}
+</script>
+<style lang="less" scoped>
+.data-labeling-home{
+  height: 100%;
+  .home{
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+}
+</style>
+<template>
+<div>
+  <Modal
+    title="安全认证"
+    class-name="securityModal"
+    :width="512"
+    :value="visible"
+    @on-cancel="handleCancel"
+    :mask-closable="false"
+    >
+    <Form class="security-form" ref="securityForm" @submit.native.prevent :model="securityForm" hide-required-mark :rules="ruleValidate">
+      <FormItem label="验证码" prop="code">
+        <Input
+          v-model="securityForm.code"
+          placeholder="请输入图文验证码，不区分大小写"
+        />
+      </FormItem>
+    </Form>
+    <div class="code">
+      <div class="capecha-wrap">
+        <Spin fix v-if="loading" />
+        <img :src="tokenSrc" v-else alt="">
+      </div>
+      <a href="javascript:;" @click="getTokenImg">看不清，换一张</a>
+    </div>
+    <div slot="footer">
+      <Button type="primary" @click="handleOk" style="width:90px;margin-right:33px" :loading="securityCodeBtnDisabled">确认</Button>
+      <Button @click="handleCancel" style="width:90px">
+        取消
+      </Button>
+    </div>
+  </Modal>
+</div>
+</template>
+<script>
+export default {
+  name: 'securityModal',
+  props: {
+    visible: {
+      type: Boolean,
+      default: false
+    },
+    securityCodeBtnDisabled: {
+      type: Boolean,
+      default: false
+    }
+  },
+  data () {
+    return {
+      securityForm: {
+        code: ''
+      },
+      ruleValidate: {
+        code: [
+          { required: true, message: '请输入验证码', trigger: 'blur' }
+        ]
+      },
+      tokenSrc: '',
+      captchaToken: '',
+      loading: true
+    }
+  },
+  mounted () {
+    this.getTokenImg()
+  },
+  methods: {
+    getTokenImg () {
+      const params = {
+        width: 177,
+        height: 59,
+        num: 4,
+        type: 1
+      }
+      this.loading = true
+      this.$api.login.getCaptcha(params).then(res => {
+        this.loading = false
+        if (res.code === 200) {
+          this.tokenSrc = res.data.captchaImg
+          this.captchaToken = res.data.captchaToken
+        } else {
+          this.tokenSrc = undefined
+          this.captchaToken = undefined
+          this.$Message.error(res.msg)
+        }
+      }).catch(err => {
+        console.log(err)
+        this.loading = false
+      })
+    },
+    handleOk () {
+      this.$refs.securityForm.validate((valid) => {
+        if (valid) {
+          this.$emit('securityModalOk', { token: this.captchaToken, captchaCode: this.securityForm.code })
+        }
+      })
+    },
+    handleCancel () {
+      this.$emit('update:visible', false)
+    }
+  }
+}
+</script>
+<style lang="less">
+.securityModal{
+  .ivu-modal{
+    height: 260px;
+  }
+  .code{
+    width: 300px;
+    height: 60px;
+    line-height: 60px;
+    text-align: center;
+    margin: 25px auto 10px;
+    .capecha-wrap{
+      display: inline-block;
+      width: 177px;
+      height: 60px;
+      vertical-align: middle;
+      position: relative;
+    }
+    img{
+      display: inline-block;
+      width: 177px;
+      height: 59px;
+      vertical-align: middle;
+      margin-right: 20px;
+    }
+    a{
+      display: inline-block;
+      vertical-align: middle;
+    }
+  }
+  .ivu-form-item{
+    margin-bottom: 0px;
+    .ivu-form-item-label{
+      margin-left: 40px;
+    }
+    .ivu-form-item-content{
+      width: 310px;
+      display: inline-block;
+    }
+  }
+  /deep/.ivu-modal-content{
+    .ivu-modal-header{
+      padding: 9px 24px;
+      color: rgba(0, 0, 0, 0.65);
+      background: #F6F7FB;
+      border-bottom: 0px;
+      border-radius: 4px 4px 0 0;
+    }
+    .ivu-modal-close{
+      height: 41px;
+      line-height: 41px;
+    }
+    .ivu-modal-body{
+      padding: 12px 24px 24px;
+    }
+    .ivu-modal-footer{
+      border-top: 0;
+    }
+    .sendBtn{
+      color: #40a9ff;
+      border-color: #40a9ff;
+    }
+    .sendBtn[disabled]{
+      color: #d9d9d9;
+      border-color: #d9d9d9;
+    }
+  }
+}
+</style>
+<template>
+  <div class="taskManage">
+    <div class="top">
+      <span>任务所属：</span>
+      <Select v-model="listMine" @on-change="searchBtn" style="width:8%;margin-right:1%;">
+          <Option v-for="item in taskList" :value="item.value" :key="item.value">{{ item.label }}</Option>
+      </Select>
+      <span>数据类型：</span>
+      <Select v-model="dataType" @on-change="onDataTypeChange" style="width:8%;margin-right:1%;">
+          <Option v-for="item in dataTypeList" :value="item.value" :key="item.value">{{ item.label }}</Option>
+      </Select>
+      <span>任务类型：</span>
+      <Select v-model="taskType" @on-change="searchBtn" style="width:8%;margin-right:1%;">
+          <Option v-for="item in taskTypeList" :value="item.id" :key="item.id">{{ item.value }}</Option>
+      </Select>
+      <span>任务状态：</span>
+      <Select v-model="state" @on-change="searchBtn" style="width:8%;margin-right:1%;">
+          <Option v-for="item in stateList" :value="item.value" :key="item.value">{{ item.label }}</Option>
+      </Select>
+      <span>应用领域：</span>
+      <Select v-model="appId" @on-change="searchBtn" style="width:8%;margin-right:1%;">
+          <Option v-for="item in productList" :value="item.id" :key="item.id">{{ item.name }}</Option>
+      </Select>
+      <Input suffix="ios-search" @on-search="search" @on-change="change" search placeholder="输入关键字进行查询" style="width: 15%;"  v-model='name'/>
+      <Button type="primary" class="publish-task" @click="publish">发布任务</Button>
+    </div>
+    <div v-show="total>0" class="card" id="scrollTask">
+      <div class="body" v-for="(items,i) in taskDataList" :key="i">
+        <div class="title">
+          <Tooltip :content="taskTypeNameMap[items.taskType]" theme="light" placement="right">
+            <img class="title-img-task-type" :src="imgMap[items.taskType]" alt="">
+          </Tooltip>
+          <span class="left">{{items.name}}</span>
+          <span class="status" :style="{'background':backgroundTaskMap[items.state],'color':colorTaskMap[items.state]}">{{taskStateNameMap[items.state]}}</span>
+        </div>
+        <div class="body-inner" style="padding-top:18px;">
+          <Row v-if="items.state === 1 || items.state === 3 || items.state === 2">
+            <i-col :span="12" class="steps">
+              <Steps v-if="items.state === 1 || items.state === 2" :current="items.state === 1?1:2" :status="items.state === 1?'process':'error'" direction="vertical" size="small">
+                <Step v-for="(item,index) in examineList" :key="index" :title="item.title" :icon="items.state === 2 && index === 2 ? 'ios-close-circle' : 'ios-checkmark-circle'"></Step>
+              </Steps>
+              <Steps v-if="items.state === 3" :current="1" direction="vertical" size="small">
+                <Step v-for="(item,index) in arrangeList" :key="index" :title="item.title" icon="ios-checkmark-circle"></Step>
+              </Steps>
+            </i-col>
+            <i-col :span="12">
+              <div class="info">{{items.creatorUsername}}</div>
+              <div class="info" v-if="items.state === 1 || items.state === 2">{{items.publishTime}}</div>
+              <div class="info" v-if="items.state === 3">{{items.passTime}}</div>
+              <div class="info" v-if="items.state === 1">管理员审核中</div>
+              <div class="info" v-if="items.state === 3">管理员分配任务</div>
+              <div class="info" v-if="items.state === 2">{{`管理员${items.principalUsername}打回`}}</div>
+            </i-col>
+          </Row>
+          <Row v-if="items.state === 4">
+            <i-col :span="13">
+              <div class="left-title">发布人</div>
+              <div class="left-value">{{items.creatorUsername}}</div>
+              <div class="left-title">用时</div>
+              <div class="left-value">{{items.costTime}}</div>
+              <div class="left-title">预计完成时间</div>
+              <div class="left-value">{{items.expectFinishTime?items.expectFinishTime:'暂无'}}</div>
+            </i-col>
+            <i-col :span="11">
+              <i-circle :size="100" class="circle-outer" stroke-color="#67B5FF" :percent="Number(items.progress)?Number(items.progress)*100:0">
+                <span class="circle-task">{{`${Number(items.progress)?(Number(items.progress)*100).toFixed(2):0}%`}}</span>
+              </i-circle>
+            </i-col>
+          </Row>
+          <Row v-if="items.state === 5">
+            <i-col :span="10">
+              <div class="left-title-finish">发布人</div>
+              <div class="left-title-finish">应用产品</div>
+              <div class="left-title-finish">完成时间</div>
+              <div class="left-title-finish">标签数</div>
+              <div class="left-title-finish">数据量</div>
+            </i-col>
+            <i-col :span="14">
+              <div class="right-title">{{items.creatorUsername}}</div>
+              <div class="right-title">{{items.appName}}</div>
+              <div class="right-title">{{items.finishTime}}</div>
+              <div class="right-title">{{items.labelNum}}</div>
+              <div class="right-title">{{items.imgNum}}</div>
+            </i-col>
+          </Row>
+          <Row v-if="items.state === 7">
+            <i-col :span="10">
+              <div class="left-title-finish">发布人</div>
+              <div class="left-title-finish">应用产品</div>
+              <div class="left-title-finish">暂停时间</div>
+              <div class="left-title-finish">标签数</div>
+              <div class="left-title-finish">数据量</div>
+            </i-col>
+            <i-col :span="14">
+              <div class="right-title">{{items.creatorUsername}}</div>
+              <div class="right-title">{{items.appName}}</div>
+              <div class="right-title">{{items.pauseTime}}</div>
+              <div class="right-title">{{items.labelNum}}</div>
+              <div class="right-title">{{items.imgNum}}</div>
+            </i-col>
+          </Row>
+        </div>
+        <div class="footer">
+          <span @click="goToDetail(items)" style="cursor: pointer;">详情</span>
+          <span :class='[items.remindEnable ? "remind": "gray"]' v-if='items.state === 1 || items.state === 3' @click="handleRemind({ disable: items.remindEnable, taskId: items.id, taskState: items.state})">提醒处理</span>
+        </div>
+      </div>
+    </div>
+    <Loading v-show="isLoading" />
+    <div style="text-align:center;font-size:12px;padding-top:10px;" v-if="total === taskDataList.length && total>0">任务加载完成</div>
+    <empty v-show="total===0" :emptyData="emptyData"/>
+  </div>
+</template>
+<script>
+import { backgroundTaskMap, colorTaskMap, taskStateNameMap, taskImgMap, taskTypeNameMap } from '@/constants/index'
+import Loading from '@/components/Loading.vue'
+import Empty from '@/components/Empty.vue'
+export default {
+  data () {
+    return {
+      backgroundTaskMap,
+      colorTaskMap,
+      taskStateNameMap: Object.freeze(taskStateNameMap),
+      imgMap: Object.freeze(taskImgMap),
+      taskTypeNameMap: Object.freeze(taskTypeNameMap),
+      emptyData: {
+        topTitle: '暂无任务'
+      },
+      listMine: 1,
+      taskList: [
+        {
+          value: 1,
+          label: '我发布的'
+        },
+        {
+          value: 0,
+          label: '全部任务'
+        }
+      ],
+      taskTypeList: [],
+      state: 0,
+      taskType: 0,
+      stateList: [
+        {
+          value: 0,
+          label: '全部'
+        },
+        {
+          value: 1,
+          label: '待审核'
+        },
+        {
+          value: 2,
+          label: '被打回'
+        },
+        {
+          value: 3,
+          label: '待安排'
+        },
+        {
+          value: 4,
+          label: '标注中'
+        },
+        {
+          value: 5,
+          label: '已完成'
+        },
+        {
+          value: 7,
+          label: '暂停中'
+        }
+      ],
+      appId: 0,
+      productList: [],
+      examineList: [
+        {
+          title: '发布人'
+        },
+        {
+          title: '发起时间'
+        },
+        {
+          title: '任务状态'
+        }
+      ],
+      arrangeList: [
+        {
+          title: '发布人'
+        },
+        {
+          title: '开始排队'
+        },
+        {
+          title: '任务状态'
+        }
+      ],
+      name: null,
+      taskDataList: [],
+      pageSize: 20,
+      total: 0,
+      page: 1,
+      isLoading: false,
+      scrollFlag: true,
+      dataTypeList: [{
+        label: '全部',
+        value: 0
+      }, {
+        label: '图片',
+        value: 1
+      }, {
+        label: '文本',
+        value: 2
+      }],
+      dataType: 0
+    }
+  },
+  components: {
+    Loading,
+    Empty
+  },
+  created () {
+    const query = sessionStorage.getItem('enginnerDataTask') && JSON.parse(sessionStorage.getItem('enginnerDataTask'))
+    if (query) {
+      Object.keys(query).map(item => {
+        this[item] = query[item]
+      })
+    }
+    this.$api.taskManage.getAppList().then(res => {
+      this.loading = false
+      if (res.code === 200) {
+        this.productList = [{
+          id: 0,
+          name: '全部'
+        }].concat(res.data)
+      } else {
+        this.$Message.error(res.msg)
+      }
+    }).catch(() => {
+      this.loading = false
+    })
+    this.getTaskList()
+  },
+  mounted () {
+    const params = [{
+      name: '任务管理',
+      to: '/dataTask'
+    }]
+    this.$store.commit('changeBreadcrumb', params)
+    .addEventListener('scroll', this.onScroll, true)
+    document.querySelector('#scrollTask').addEventListener('scroll', this.onScroll)
+  },
+  methods: {
+    onScroll () {
+      const inner = document.querySelector('#scrollTask')
+      if (inner.scrollHeight - inner.scrollTop <= inner.clientHeight) {
+        if (this.scrollFlag) {
+          if (this.total > (this.page * this.pageSize)) {
+            this.page++
+            this.scrollFlag = true
+            this.getTaskList(true)
+          } else {
+            this.scrollFlag = false
+          }
+        }
+      }
+    },
+    goToDetail (item) {
+      const { id, name } = item
+      this.$router.push({
+        name: 'DataTaskDetail',
+        query: {
+          name: name,
+          state: this.taskStateNameMap[item.state],
+          taskId: id
+        }
+      })
+    },
+    searchBtn () {
+      document.querySelector('#scrollTask').scrollTop = 0 
+      this.scrollFlag = true
+      this.page = 1
+      this.getTaskList()
+    },
+    change (e) {
+      document.querySelector('#scrollTask').scrollTop = 0
+      const value = e.target.value
+      this.scrollFlag = true
+      if (!value) {
+        this.name = ''
+        this.page = 1
+        this.getTaskList()
+      }
+    },
+    getTaskList (isScroll) {
+      this.isLoading = true
+      const { appId, name, listMine, taskType, pageSize, page, state, dataType } = this
+      this.$api.taskManage.getTaskList({
+        page,
+        pageSize,
+        appId,
+        name,
+        listMine,
+        taskType,
+        state,
+        type: dataType
+      }).then(res => {
+        this.isLoading = false
+        if (res.code === 200) {
+          this.total = res.data.count
+          if (isScroll) {
+            this.taskDataList = this.taskDataList.concat(res.data.list)
+          } else {
+            this.taskDataList = res.data.list
+          }
+          this.$store.commit('changeTaskCount', res.data.count)
+        } else {
+          this.$Message.error(res.msg)
+        }
+      }).catch(() => {
+        this.isLoading = false
+      })
+    },
+    publish () {
+      this.$router.push({
+        name: 'publishTask',
+        query: {
+          name: '发布任务'
+        }
+      })
+    },
+    search (value) {
+      document.querySelector('#scrollTask').scrollTop = 0
+      this.scrollFlag = true
+      this.page = 1
+      this.name = value
+      this.getTaskList()
+    },
+    handleRemind ({ disable, taskId, taskState }) {
+      if (!disable) return
+      this.$api.message.remind({ taskId, taskState }).then(res => {
+        if (res.code === 200) {
+          this.$Message.success('提醒成功')
+          this.getTaskList()
+        } else {
+          this.$Message.error(res.msg)
+        }
+      })
+    },
+    onDataTypeChange (value) {
+      document.querySelector('#scrollTask').scrollTop = 0 
+      this.scrollFlag = true
+      this.page = 1
+      this.getTaskList()
+    }
+  },
+  watch: {
+    dataType: {
+      handler (newVal, oldVal) {
+        const val = newVal || 0
+        this.$api.taskManage.getTaskType(val).then(res => {
+          this.taskTypeList = [{
+            id: 0,
+            value: '全部'
+          }].concat(res.data)
+        })
+      },
+      immediate: true
+    }
+  },
+  beforeDestroy () {
+    const { listMine, taskType, state, appId, name, dataType } = this
+    const queryObj = {
+      listMine, taskType, state, appId, name, dataType
+    }
+    sessionStorage.setItem('enginnerDataTask', JSON.stringify(queryObj))
+  }
+}
+</script>
+<style lang="less" scoped>
+.taskManage{
+  height: 100%;
+  padding: 20px 0 10px;
+  font-size: 12px;
+  .publish-task{
+    margin-left:15px;
+    float:right;
+    font-size: 12px;
+  }
+  .top{
+    padding:0 20px;
+    padding-bottom: 15px;
+    min-width: 1050px;
+    /deep/ .ivu-select-dropdown{
+      max-height: 230px;
+    }
+  }
+  .task-page{
+    text-align: center;
+  }
+  .card{
+    height: calc(~ "100% - 75px");
+    padding-top:15px;
+    overflow: hidden;
+    display: block;
+    position: relative;
+    overflow-y: scroll;
+    .title{
+      height: 42px;
+      padding-top:10px;
+      border-bottom: 1px solid rgba(203,203,203,0.3);
+      .status{
+        width: 62px;
+        height:22px;
+        line-height: 22px;
+        text-align: center;
+        background: #EEEEEE;
+        border-radius:5px;
+        font-size: 12px;
+        float: right;
+      }
+      .left{
+        padding-left:8px;
+        font-size: 14px;
+        font-weight: 500;
+        position: relative;
+        width: 140px;
+        display: inline-block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+    .body-inner{
+      height: 151px;
+      padding: 10px 10px;
+      font-size: 12px;
+      border-bottom: 1px solid rgba(203,203,203,0.3);
+      overflow: hidden;
+      .info{
+        height: 47px;
+        font-weight: bold;
+      }
+      .circle-outer{
+        .circle-task{
+          font-size:20px;
+          color:#6DB5FF;
+        }
+      }
+      .left-title{
+        height: 20px;
+        color:#828282;
+      }
+      .left-value{
+        height: 20px;
+      }
+      .left-title-finish{
+        height: 24px;
+        color:#828282;
+        cursor: pointer;
+      }
+      .right-title{
+        height: 24px;
+        text-align: right;
+        font-weight: bold;
+      }
+      .steps{
+        /deep/ .ivu-steps-title{
+          color:#828282;
+        }
+      }
+    }
+    .body{
+      width:250px;
+      height: 230px;
+      background:rgba(255,255,255,1);
+      box-shadow:0px 0px 5px 0px rgba(174,174,174,0.5);
+      border-radius:5px;
+      padding:0 10px;
+      float: left;
+      margin:0 20px 40px;
+      .title{
+        position: relative;
+      }
+      .title-img-task-type{
+        width: 22px;
+      }
+    }
+    .footer{
+      text-align: center;
+      height: 38px;
+      line-height: 38px;
+      font-size: 12px;
+      color: #0679E5;
+      >span{
+        width: 50%;
+        padding:0 15px;
+        display: inline-block;
+      }
+      .remind{
+        color: #FF5656;
+        cursor: pointer;
+      }
+      .gray{
+        color: #999;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+@media (max-width: 1400px) {
+  .card{
+    .body{
+      width: 262px!important;
+    }
+  }
+}
+</style>
+<template>
+  <div class="taskManage">
+    <Form ref="query" @submit.native.prevent :model="query" :label-width="100" inline :style="{ width: '100%' }">
+       <FormItem prop="status" label="数据类型:" style="width:20%; margin-right:10px;">
+        <Select v-model="query.type" @on-change="onTypeChange">
+          <Option v-for="item in dataTypeList" :value="item.value" :key="item.value">{{ item.label }}</Option>
+        </Select>
+      </FormItem>
+      <FormItem prop="status" label="任务类型:" style="width:20%; margin-right:10px;">
+        <Select v-model="query.taskType" @on-change="searchTaskList">
+          <Option v-for="item in taskTypeList" :value="item.id" :key="item.id">{{ item.value }}</Option>
+        </Select>
+      </FormItem>
+      <FormItem prop="status" label="任务状态:" style="width:20%; margin-right:10px;">
+        <Select v-model="query.state" @on-change="searchTaskList">
+          <Option v-for="item in statusList" :value="item.value" :key="item.value">{{ item.label }}</Option>
+        </Select>
+      </FormItem>
+      <FormItem prop="app" label="应用领域:" style="width:20%; margin-right:10px;">
+        <Select v-model="query.appId" @on-change="searchTaskList">
+          <Option v-for="item in appList" :value="item.id" :key="item.id">{{ item.name }}</Option>
+        </Select>
+      </FormItem>
+      <FormItem :label-width="0" style="width:14%;">
+        <Input
+          v-model="query.name"
+          suffix="ios-search"
+          @on-search="searchTaskList"
+          search
+          placeholder="搜索任务"
+          style="width: auto;"
+        />
+      </FormItem>
+    </Form>
+    <template>
+      <div class="card-list" id="scrollTask" v-show="total>0">
+        <task-card v-for="item in taskList" :key="item.id" :taskType="item.taskType" :title="item.name" :type="getState(item.state).type" :typeName="getState(item.state).label">
+          <div slot="content" v-if="item.state === 4">
+            <Row :gutter="4">
+              <i-col :span="12">
+                <p>用时：</p>
+                <p class="blod">{{item.costTime}}</p>
+                <p>预计完成时间：</p>
+                <p class="blod">{{item.expectFinishTime?item.expectFinishTime:'暂无'}}</p>
+              </i-col>
+              <i-col :span="12">
+                <i-circle :percent="item.progress?Number(item.progress)*100:0" :size="110" stroke-color="#6DB5FF">
+                  <span class="demo-circle-inner">{{getPercent(item.progress)}}%</span>
+                </i-circle>
+              </i-col>
+            </Row>
+          </div>
+          <div slot="content" v-else-if="item.state === 5">
+            <p>发起人：<span>{{item.creatorUsername}}</span></p>
+            <p>任务类型：<span>{{taskTypeNameMap[item.taskType]}}</span></p>
+            <p>完成时间：<span>{{item.finishTime}}</span></p>
+            <p>数据量：<span>{{item.imgNum}}</span></p>
+            <p>标签数：<span>{{item.labelNum}}</span></p>
+          </div>
+          <div slot="content" v-else>
+            <p>发起人：<span>{{item.creatorUsername}}</span></p>
+            <p v-if="item.state === 7">暂停时间：<span>{{item.pauseTime}}</span></p>
+            <p>任务类型：<span>{{taskTypeNameMap[item.taskType]}}</span></p>
+            <p v-if="item.state === 1 || item.state === 3">等待时间：<span>{{item.waitTime}}</span></p>
+            <p>数据量：<span>{{item.imgNum}}</span></p>
+            <p>标签数：<span>{{item.labelNum}}</span></p>
+          </div>
+                    <div slot="footer" v-if="item.state === 1">
+            <Row>
+              <i-col :span="6"><a href="" @click.stop.prevent="handleApproved(item.id)">接受</a></i-col>
+              <i-col :span="6"><a href="" @click.stop.prevent="handleReject(item.id)" style="color: #ff2b2b">拒绝</a></i-col>
+              <i-col :span="6" :offset="6">
+                <a href="#" style="float: right;" @click.stop.prevent="handleToDetail(item.id)">详情</a>
+              </i-col>
+            </Row>
+          </div>
+          <div slot="footer" v-else-if="item.state === 4">
+            <Row>
+              <i-col :span="6"><a href="" @click.stop.prevent="handlePauseTask(item.id)">暂停</a></i-col>
+              <i-col :span="6"><a href="" @click.stop.prevent="handleOverTask(item.id)" style="color: #ff2b2b">结束任务</a></i-col>
+              <i-col :span="6" :offset="6"><a href="#" style="float: right;" @click.stop.prevent="handleToDetail(item.id)">详情</a></i-col>
+            </Row>
+          </div>
+          <div slot="footer" v-else-if="item.state === 7">
+            <Row>
+              <i-col :span="6"><a href="" @click.stop.prevent="handleContinueTask(item.id)">继续</a></i-col>
+              <i-col :span="6"><a href="" @click.stop.prevent="handleOverTask(item.id)" style="color: #ff2b2b">结束任务</a></i-col>
+              <i-col :span="6" :offset="6"><a href="#" style="float: right;" @click.stop.prevent="handleToDetail(item.id)">详情</a></i-col>
+            </Row>
+          </div>
+          <div slot="footer" v-else-if="item.state === 3">
+            <Row>
+              <i-col :span="6"><a href="" @click.stop.prevent="handleToDetail(item.id,{arrange: '1'})">安排标注</a></i-col>
+              <i-col :span="6" :offset="12"><a href="#" style="float: right;" @click.stop.prevent="handleToDetail(item.id)">详情</a></i-col>
+            </Row>
+          </div>
+          <div slot="footer" v-else>
+            <p style="text-align: center;">
+              <a href="" @click.stop.prevent="handleToDetail(item.id)">详情</a>
+            </p>
+          </div>
+        </task-card>
+      </div>
+      <div style="text-align:center;font-size:12px;padding-top:10px;" v-if="total === taskList.length && total>0">任务加载完成</div>
+        <Page class="table-page" :total="total" :current="query.page" :page-size="query.pageSize" @on-change="handlePageChange" />
+      </div>
+    </template>
+    <empty v-show="total===0" :emptyData="emptyData"/>
+    <loading v-if="loading || loadingAppList || loadingTaskType" />
+  </div>
+</template>
+<script>
+import Loading from '@/components/Loading'
+import TaskCard from '@/components/TaskCard'
+import Empty from '@/components/Empty.vue'
+import { getTaskList, getAppList, approvedTask, rejectTask, pauseTask, overTask } from '@/api/taskManager'
+import { taskTypeNameMap, dataTypeList } from '@/constants/index'
+
+export default {
+  components: {
+    TaskCard,
+    Loading,
+    Empty
+  },
+  data () {
+    return {
+      loading: false,
+      loadingAppList: false,
+      loadingTaskType: false,
+      taskList: [],
+      total: 0,
+      emptyData: {
+        topTitle: '暂无数据'
+      },
+      appList: [], 
+      statusList: [
+        {
+          value: 0,
+          label: '全部',
+          type: ''
+        },
+        {
+          value: 1,
+          label: '待审核',
+          type: 'default'
+        },
+        
+        : 2,
+        : '被打回',
+        : 'error'
+        
+        {
+          value: 3,
+          label: '待安排',
+          type: 'warning'
+        },
+        {
+          value: 4,
+          label: '标注中',
+          type: 'primary'
+        },
+        {
+          value: 7,
+          label: '暂停中',
+          type: 'pause'
+        },
+        {
+          value: 5,
+          label: '已完成',
+          type: 'success'
+        }
+      ],
+      taskTypeList: [],
+      query: {
+        name: '',
+        state: 0,
+        type: 0,
+        taskType: 0,
+        appId: 0,
+        page: 1,
+        pageSize: 20
+      },
+      scrollFlag: true,
+      taskTypeNameMap: Object.freeze(taskTypeNameMap),
+      dataTypeList: Object.freeze(dataTypeList)
+    }
+  },
+  created () {
+    const query = sessionStorage.getItem('adminTaskManage') && JSON.parse(sessionStorage.getItem('adminTaskManage'))
+    if (query) {
+      Object.keys(query).map(item => {
+        this.query[item] = query[item]
+      })
+    }
+  },
+  mounted () {
+        this.searchTaskList()
+      this.getAppList()
+      this.getTaskType()
+    document.querySelector('#scrollTask').addEventListener('scroll', this.onScroll)
+  },
+  methods: {
+    onTypeChange () {
+      this.query.taskType = 0
+      this.getTaskType()
+      this.searchTaskList()
+    },
+    onScroll () {
+      const inner = document.querySelector('#scrollTask')
+      if (inner.scrollHeight - inner.scrollTop <= inner.clientHeight) {
+        if (this.scrollFlag) {
+          if (this.total > (this.query.page * this.query.pageSize)) {
+            this.query.page++
+            this.scrollFlag = true
+            this.getTaskList(true)
+          } else {
+            this.scrollFlag = false
+          }
+        }
+      }
+    },
+        getState (state) {
+      const newState = this.statusList.find(item => {
+        return item.value === state
+      })
+      return newState
+    },
+    getPercent (value) {
+      return value ? (Number(value) * 100).toFixed(2) : 0
+    },
+        searchTaskList () {
+      this.query.page = 1
+      document.querySelector('#scrollTask').scrollTop = 0 
+      this.scrollFlag = true
+      this.$nextTick(() => {
+        this.getTaskList()
+      })
+    },
+        getTaskList (isScroll) {
+      this.loading = true
+      getTaskList(this.query).then(response => {
+        this.loading = false
+        if (response.code === 200) {
+          this.total = response.data.count
+          if (isScroll) {
+            this.taskList = this.taskList.concat(response.data.list)
+          } else {
+            this.taskList = response.data.list
+          }
+          this.$store.commit('changeTaskCount', this.total)
+        } else {
+          this.$Message.error(response.msg)
+        }
+      }).catch(() => {
+        this.loading = false
+      })
+    },
+        getAppList () {
+      this.loadingAppList = true
+      getAppList().then(response => {
+        this.loadingAppList = false
+        if (response.code === 200) {
+          this.appList = [{
+            id: 0,
+            name: '全部'
+          }].concat(response.data)
+        } else {
+          this.$Message.error(response.msg)
+        }
+      }).catch(() => {
+        this.loadingAppList = false
+      })
+    },
+        getTaskType () {
+      this.loadingTaskType = true
+      this.query.type = this.query.type ? this.query.type : 0
+      this.$api.taskManage.getTaskType(this.query.type)
+        .then(response => {
+          this.loadingTaskType = false
+          if (response.code === 200) {
+            this.taskTypeList = [{
+              id: 0,
+              value: '全部'
+            }].concat(response.data)
+          } else {
+            this.$Message.error(response.msg)
+          }
+        }).catch(() => {
+          this.loadingTaskType = false
+        })
+    },
+         (page) {
+    .query.page = page
+    .$nextTick(() => {
+    .getTaskList()
+            handleApproved (id) {
+      this.$Modal.confirm({
+        title: '提示',
+        content: '确定要接受此任务吗？',
+        loading: true,
+        onOk: () => {
+          approvedTask({
+            id
+          }).then(response => {
+            
+            this.$Modal.remove()
+            if (response.code === 200) {
+              this.$Message.success('接受成功!')
+              this.getTaskList()
+            } else {
+              this.$Message.error(response.msg)
+            }
+          })
+        }
+      })
+    },
+        handleReject (id) {
+      this.$Modal.confirm({
+        title: '提示',
+        content: '确定要拒绝此任务吗？',
+        loading: true,
+        onOk: () => {
+          rejectTask({
+            id
+          }).then(response => {
+            
+            this.$Modal.remove()
+            if (response.code === 200) {
+              this.$Message.success('拒绝成功!')
+              this.getTaskList()
+            } else {
+              this.$Message.error(response.msg)
+            }
+          })
+        }
+      })
+    },
+        handlePauseTask (id) {
+      this.$Modal.confirm({
+        title: '提示',
+        content: '确定要暂停此任务吗？',
+        loading: true,
+        onOk: () => {
+          pauseTask({
+            id
+          }).then(response => {
+            
+            this.$Modal.remove()
+            if (response.code === 200) {
+              this.$Message.success('操作成功!')
+              this.getTaskList()
+            } else {
+              this.$Message.error(response.msg)
+            }
+          })
+        }
+      })
+    },
+        handleContinueTask (id) {
+      this.handleToDetail(id)
+    },
+        handleOverTask (id) {
+      this.$Modal.confirm({
+        title: '提示',
+        content: '确定要结束此任务吗？',
+        loading: true,
+        onOk: () => {
+          overTask({
+            id
+          }).then(response => {
+            
+            this.$Modal.remove()
+            if (response.code === 200) {
+              this.$Message.success('操作成功!')
+              this.getTaskList()
+            } else {
+              this.$Message.error(response.msg)
+            }
+          })
+        }
+      })
+    },
+        handleToDetail (id, query) {
+      this.$router.push({
+        path: `/taskManage/detail/${id}`,
+        query
+      })
+       url = this.$router.resolve({
+      : `/taskManage/detail/${id}`,
+      
+      
+      .open(url.href, '_blank')
+      .open(`/taskManage/detail/${id}`, '_blank')
+    }
+  },
+    beforeDestroy () {
+    sessionStorage.setItem('adminTaskManage', JSON.stringify(this.query))
+  }
+}
+</script>
+<style lang="less" scoped>
+  .taskManage {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    padding: 20px 20px 10px;
+    position: relative;
+      /deep/ .ivu-select-dropdown{
+        max-height: 230px;
+      }
+  }
+  .my-select {
+    text-align: left;
+  }
+    .card-list {
+    : flex;
+    -content: space-around;
+    -wrap: wrap;
+    height: calc(100% - 58px);
+    overflow-y: scroll;
+    .ivu-card {
+      margin-left: 20px;
+      margin-bottom: 20px;
+    }
+  }
+  .table-page {
+    margin: 10px 10px 0;
+  }
+  .demo-circle-inner{
+    font-size: 22px;
+    color:#6DB5FF;
+  }
+</style>
+<template>
+  <Modal
+    v-model="visible"
+    title="新增用户"
+    :closable="false"
+    :mask-closable="false"
+    >
+    <Form ref="addUserForm" :model="user" :rules="rules" :label-width="80">
+      <FormItem label="用户名：" prop="fullName" class='fullName'>
+        <Input v-model="user.fullName" placeholder="请输入用户名" :maxlength="30" show-word-limit/>
+      </FormItem>
+      <FormItem label="邮箱：" prop="account">
+        <Input v-model="user.account" placeholder="请输入邮箱" />
+      </FormItem>
+      <FormItem label="密码：" prop="passWord">
+        <Input v-model="user.passWord" type="password" placeholder="包含英文大小写和数字的8位数" />
+      </FormItem>
+      <FormItem prop="groupId" label="部门：">
+        <treeselect v-model="user.groupId" placeholder="请选择部门" :options="departTreedData" @select='changeSelcect'/>
+      </FormItem>
+      <FormItem label="角色：" prop="roleId">
+        <Select v-model="user.roleId">
+          <Option v-for="item in roleList" :value="item.id" :key="item.id">{{ item.name }}</Option>
+        </Select>
+      </FormItem>
+    </Form>
+        <div slot="footer">
+      <Button @click="handleClose">取消</Button>
+      <Button type="primary" @click="handleAddUser">确定</Button>
+    </div>
+        <loading v-if="loading" />
+  </Modal>
+</template>
+<script>
+import Loading from '@/components/Loading'
+import { validateEmail, validatePassword } from '@/utils/validate'
+import md5 from 'js-md5'
+import Treeselect from '@riophae/vue-treeselect'
+import '@riophae/vue-treeselect/dist/vue-treeselect.css'
+import { getRoleList } from '@/api/role'
+import { addUserInfo, checkAccontRepeat } from '@/api/user'
+
+export default {
+  name: 'AddUser',
+  components: {
+    Loading,
+    Treeselect
+  },
+  props: {
+    visible: {
+      type: Boolean,
+      default: false
+    },
+    departTreedData: {
+      type: Array,
+      default () {
+        return []
+      }
+    }
+  },
+  watch: {
+    visible: function (val) {
+      if (val) {
+        this.getRoleList()
+      }
+    }
+  },
+  data () {
+    const checkEmail = (rule, value, callback) => {
+      if (value && !validateEmail(value)) {
+        callback(new Error('邮箱格式不正确'))
+      } else {
+        checkAccontRepeat({
+          account: value
+        }).then(response => {
+          if (response.code !== 200) {
+            callback(new Error('此邮箱已经被注册！'))
+          } else {
+            callback()
+          }
+        })
+      }
+    }
+        const checkPassword = (rule, value, callback) => {
+      if (value.length < 8 || value.length > 16) {
+        callback(new Error('密码长度为8-16字符'))
+      } else if (value && !validatePassword(value)) {
+        callback(new Error('必须由数字、字母组成的8-16个字符'))
+      } else {
+        callback()
+      }
+    }
+        return {
+      loading: false,
+      user: {
+        fullName: '',
+        account: '',
+        passWord: '',
+        roleId: '',
+        groupId: null
+      },
+      rules: {
+        fullName: [
+          { required: true, message: '请输入用户名', trigger: 'blur' }
+        ],
+        account: [
+          { required: true, message: '请输入邮箱', trigger: 'blur' },
+          { validator: checkEmail, trigger: 'blur' }
+        ],
+        passWord: [
+          { required: true, message: '请输入密码', trigger: 'blur' },
+          { validator: checkPassword, trigger: 'blur' }
+        ],
+        roleId: [
+          { type: 'number', required: true, message: '请选择角色', trigger: 'blur' }
+        ],
+        groupId: [
+          { required: true, type: 'number', message: '请选择部门', trigger: 'blur' }
+        ]
+      },
+      roleList: []
+    }
+  },
+  methods: {
+        getRoleList () {
+      getRoleList({
+        flag: 1
+      }).then(response => {
+        if (response.code === 200) {
+          this.roleList = response.data
+        } else {
+          this.$Message.error(response.msg)
+        }
+      })
+    },
+        handleAddUser () {
+      
+      this.$refs.addUserForm.validate(valid => {
+        if (valid) {
+          this.loading = true
+          const _user = JSON.parse(JSON.stringify(this.user))
+          _user.passWord = md5(_user.passWord) 
+          addUserInfo(_user).then(response => {
+            this.loading = false
+            if (response.code === 200) {
+              
+              this.handleClose()
+              
+              this.$emit('callback')
+              
+              this.$Message.success('新增用户成功！')
+            } else {
+              this.$Message.error(response.msg)
+            }
+          }).catch(() => {
+            this.loading = false
+          })
+        }
+      })
+    },
+        handleClose () {
+      if (this.$refs.addUserForm) {
+        
+        this.$refs.addUserForm.resetFields()
+      }
+      
+      this.$emit('update:visible', false)
+    },
+    changeSelcect (params) {
+      console.log(params, 'params')
+    }
+  }
+}
+</script>
+<style lang="less" scoped>
+.fullName{
+  /deep/.ivu-input{
+    padding-right: 50px;
+  }
+}
+</style>
