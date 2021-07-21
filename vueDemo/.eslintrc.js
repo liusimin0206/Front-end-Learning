@@ -1,6 +1,7 @@
 module.exports = {
+  root: true,
   env: {
-    browser: true,
+    node: true,
     es2021: true,
   },
   extends: [
@@ -11,9 +12,9 @@ module.exports = {
     sourceType: 'module',
   },
   rules: {
-    'no-underscore-dangle': [
-      'error', { allowAfterThis: true },
-    ],
+    'no-underscore-dangle': 'off',
     'linebreak-style': 'off',
+    'no-param-reassign': 'off',
+    'no-use-before-define': ['error', { functions: false, classes: false }],
   },
 };
