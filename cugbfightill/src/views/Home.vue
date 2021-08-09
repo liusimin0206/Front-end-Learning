@@ -49,10 +49,10 @@ export default {
     return {
       dateString: undefined,
       list: [
-        // {
-        //   title: "2020年秋季学期新生报到申请表",
-        //   detail: ["申请记录和审批状态"]
-        // },
+        {
+          title: "每日健康打卡",
+          detail: ["打卡", "申请记录和审批状态"]
+        },
         {
           title: "当日进出校申请表",
           detail: ["申请", "申请记录和审批状态"]
@@ -70,16 +70,8 @@ export default {
         //   detail: ["打卡", "申请记录和审批状态"]
         // },
         {
-          title: "每日健康打卡",
-          detail: ["打卡", "申请记录和审批状态"]
-        },
-        {
-          title: "学生返京（非返校）申请表",
-          detail: ["申请", "申请记录和审批状态"]
-        },
-        {
-          title: "学生离京（非离校）申请表",
-          detail: ["申请", "申请记录和审批状态"]
+          title: "校外新冠疫苗接种信息采集表",
+          detail: ["申请记录和审批状态"]
         }
       ],
       showLoading: false
@@ -93,9 +85,9 @@ export default {
   },
   methods: {
     handleClick(i, j) {
-      if (i == 0 && j == 0) {
+      if (i == 1 && j == 0) {
         this.$router.push("/update");
-      } else if (i == 0 && j == 1) {
+      } else if (i == 1 && j == 1) {
         this.$router.push("/verify");
       } else this.showLoading = true;
     },
