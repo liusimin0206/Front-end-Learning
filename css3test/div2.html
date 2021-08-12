@@ -2,7 +2,7 @@
  * @Author: liusimin
  * @Date: 2020-10-26 15:43:11
  * @LastEditors: your name
- * @LastEditTime: 2021-04-07 11:51:30
+ * @LastEditTime: 2021-04-08 15:06:59
  * @Description: file content
 -->
 <!DOCTYPE html>
@@ -13,23 +13,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <style>
-        div {
-            width: 249px;
-            height: 249px;
-            border: 1px solid #000000;
-            position: absolute;
-            bottom: 0;
-        }
         body {
-           height: 2000px;
+            background: beige;
+        }
+
+        section {
+            width: 400px;
+            height: 480px;
+            margin: 30px;
+            padding: 15px;
+            background: lightgray;
+        }
+
+        p {
+            position: fixed;
+            width: 50%;
+            /* == (50vw - (width of vertical scrollbar)) */
+            height: 50%;
+            /* == (50vh - (height of horizontal scrollbar)) */
+            margin: 5%;
+            /* == (5vw - (width of vertical scrollbar)) */
+            padding: 5%;
+            /* == (5vw - (width of vertical scrollbar)) */
+            background: cyan;
         }
     </style>
 </head>
 
 <body>
-<div>
- 
-</div>
+    <section>
+        <p>This is a paragraph!</p>
+    </section>
 </body>
 
 </html>

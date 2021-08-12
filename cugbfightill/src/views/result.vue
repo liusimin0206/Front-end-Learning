@@ -61,8 +61,8 @@
 
           <div class="vresults">
             <div class="item">
-              <div class="tit">辅导员</div>
-              <div class="text">通过</div>
+              <div class="tit">辅导员 [吕菲菲-2020020010]</div>
+              <div class="text">通过 {{ dateString }} {{ time }}</div>
               <div class="text">审核意见</div>
             </div>
             <div class="item">
@@ -71,8 +71,8 @@
               <div class="text">审核意见：</div>
             </div>
             <div class="item">
-              <div class="tit">学工处 [学生处-10001]</div>
-              <div class="text">通过 {{ dateString }} {{ time }}</div>
+              <div class="tit">学工处</div>
+              <div class="text">通过</div>
               <div class="text">审核意见：</div>
             </div>
           </div>
@@ -83,9 +83,7 @@
       </a-collapse>
     </div>
     <div class="bottom"></div>
-    <div class="vover">
-      审核完成
-    </div>
+    <div class="vover">审核完成</div>
   </div>
 </template>
 
@@ -93,7 +91,7 @@
 import { userInfo } from "../assets/data/getInfo";
 import ElImageViewer from "../components/image-viewer";
 export default {
-  data: function() {
+  data: function () {
     return {
       dateString: "",
       time: "",
@@ -106,7 +104,7 @@ export default {
         "学院：信息工程学院",
         "年级：2019",
         "导师：王建业",
-        "联系电话：18310621826"
+        "联系电话：18310621826",
       ],
       applicationInfor: [],
 
@@ -116,12 +114,12 @@ export default {
       url2: require("../assets/img/健康码.jpg"),
 
       showViewer1: false,
-      showViewer2: false
+      showViewer2: false,
     };
   },
 
   components: {
-    ElImageViewer
+    ElImageViewer,
   },
   methods: {
     closeViewer() {
@@ -139,9 +137,9 @@ export default {
       return [
         bu2Wei(date.getHours()),
         bu2Wei(date.getMinutes()),
-        bu2Wei(date.getSeconds())
+        bu2Wei(date.getSeconds()),
       ].join(":");
-    }
+    },
   },
   created() {
     this.date = new Date();
@@ -151,22 +149,25 @@ export default {
     this.dateString = this.$route.query.date;
     this.url2 =
       localStorage.getItem("jianKangMa") || require("../assets/img/健康码.jpg");
-
+    this.url3 =
+      localStorage.getItem("xingChenMa") || require("../assets/img/健康码.jpg");
     this.applicationInfor = [
       { type: "string", content: "临时进出校类别：临时出校" },
       { type: "string", content: "出发地：" },
       { type: "string", content: `进出校日期：${this.dateString}` },
-      { type: "string", content: "目的地：金隅嘉华大厦" },
-      { type: "string", content: "出校原因：实习任务" },
+      { type: "string", content: "目的地：北医三" },
+      { type: "string", content: "出校原因：看病" },
       { type: "string", content: "行程安排：公交" },
       { type: "string", content: "请上传“北京健康宝”健康绿码截图：" },
       { type: "jiankangbao", content: this.url2 },
+      { type: "string", content: "请上传“通信大数据行程卡”截图：" },
+      { type: "jiankangbao", content: this.url3 },
       {
         type: "string",
-        content: "位置信息：北京市海淀区学院路街道成府路中国地质大学(北京)"
-      }
+        content: "位置信息：北京市海淀区学院路街道成府路中国地质大学(北京)",
+      },
     ];
-  }
+  },
 };
 </script>
 
