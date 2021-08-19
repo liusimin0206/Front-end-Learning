@@ -20,9 +20,9 @@ export default {
   components: {
     HelloWorld
   },
-  data:()=>{
-    msg:'hello'
-  }
+  data() {
+    return {};
+  },
 }
 </script>
 
