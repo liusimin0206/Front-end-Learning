@@ -91,7 +91,7 @@
 import { userInfo } from "../assets/data/getInfo";
 import ElImageViewer from "../components/image-viewer";
 export default {
-  data: function () {
+  data: function() {
     return {
       dateString: "",
       time: "",
@@ -104,7 +104,7 @@ export default {
         "学院：信息工程学院",
         "年级：2019",
         "导师：王建业",
-        "联系电话：18310621826",
+        "联系电话：18310621826"
       ],
       applicationInfor: [],
 
@@ -114,12 +114,12 @@ export default {
       url2: require("../assets/img/健康码.jpg"),
 
       showViewer1: false,
-      showViewer2: false,
+      showViewer2: false
     };
   },
 
   components: {
-    ElImageViewer,
+    ElImageViewer
   },
   methods: {
     closeViewer() {
@@ -137,9 +137,9 @@ export default {
       return [
         bu2Wei(date.getHours()),
         bu2Wei(date.getMinutes()),
-        bu2Wei(date.getSeconds()),
+        bu2Wei(date.getSeconds())
       ].join(":");
-    },
+    }
   },
   created() {
     this.date = new Date();
@@ -164,10 +164,10 @@ export default {
       { type: "jiankangbao", content: this.url3 },
       {
         type: "string",
-        content: "位置信息：北京市海淀区学院路街道成府路中国地质大学(北京)",
-      },
+        content: "位置信息：北京市海淀区学院路街道成府路中国地质大学(北京)"
+      }
     ];
-  },
+  }
 };
 </script>
 

@@ -89,6 +89,8 @@ export default {
         this.$router.push("/update");
       } else if (i == 1 && j == 1) {
         this.$router.push("/verify");
+      } else if (i == 3 && j == 1) {
+        this.$router.push("/result2");
       } else this.showLoading = true;
     },
     date2Str

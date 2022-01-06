@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-08-22 11:17:11
- * @LastEditTime: 2021-08-22 11:31:20
+ * @LastEditTime: 2021-08-22 11:53:53
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \Front-end-Learning\test1\interview刷题\fastSort.js
@@ -35,5 +35,7 @@ const fastSort = arr => {
   return [...left, ...mid, ...right];
 };
 
-const res = fastSort([5]);
-console.log(res);
+const res = fastSort([11, 99, 33, 69, 77, 88, 55, 11, 33, 36, 39, 66, 44, 22]);
+res.forEach(value => {
+  console.log(value);
+});

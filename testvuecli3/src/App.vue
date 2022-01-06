@@ -1,34 +1,39 @@
-<!--
- * @Author: liusimin
- * @Date: 2020-09-22 09:05:50
- * @LastEditors: your name
- * @LastEditTime: 2021-04-02 17:11:28
- * @Description: file content
--->
 <template>
   <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <img alt="Vue logo" src="./assets/logo.png" />
+    {{ message }}
+    <HelloWorld msg="Welcome to Your Vue.js App" />
+    <dongtaijujian />
   </div>
 </template>
 
 <script>
 import HelloWorld from './components/HelloWorld.vue'
-
+import dongtaijujian from './components/dongtaijujian.vue'
 export default {
   name: 'app',
   components: {
-    HelloWorld
+    HelloWorld,
+    dongtaijujian
   },
   data() {
-    return {};
+    return {
+      message:'',
+    };
   },
+  created(){
+    
+  },
+
+  mounted(){
+    console.log('app mounted');
+  }
 }
 </script>
 
 <style>
 #app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
+  font-family: "Avenir", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
