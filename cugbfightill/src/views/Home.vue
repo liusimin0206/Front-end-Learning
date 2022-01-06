@@ -90,7 +90,7 @@ export default {
       } else if (i == 1 && j == 1) {
         this.$router.push("/verify");
       } else if (i == 3 && j == 1) {
-        this.$router.push("/result2");
+        this.$router.push("/verify2");
       } else this.showLoading = true;
     },
     date2Str
